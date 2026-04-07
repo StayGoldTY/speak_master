@@ -1,5 +1,5 @@
 class UserProgress {
-  final String oderId;
+  final String userId;
   final int streakDays;
   final int totalXp;
   final int level;
@@ -13,7 +13,7 @@ class UserProgress {
   final bool isPro;
 
   const UserProgress({
-    required this.oderId,
+    required this.userId,
     this.streakDays = 0,
     this.totalXp = 0,
     this.level = 1,
@@ -27,7 +27,47 @@ class UserProgress {
     this.isPro = false,
   });
 
+  factory UserProgress.empty(String userId) => UserProgress(userId: userId);
+
+  factory UserProgress.fromJson(Map<String, dynamic> json) {
+    return UserProgress(
+      userId: json['user_id'] as String? ?? 'local',
+      streakDays: json['streak_days'] as int? ?? 0,
+      totalXp: json['total_xp'] as int? ?? 0,
+      level: json['level'] as int? ?? 1,
+      todayAssessmentCount: json['today_assessment_count'] as int? ?? 0,
+      lastActiveDate: json['last_active_date'] != null
+          ? DateTime.tryParse(json['last_active_date'] as String)
+          : null,
+      completedLessons: _toStringSet(json['completed_lessons']),
+      completedUnits: _toStringSet(json['completed_units']),
+      earnedBadges: _toStringSet(json['earned_badges']),
+      phonemeScores: (json['phoneme_scores'] as Map<String, dynamic>?)
+              ?.map((k, v) => MapEntry(k, (v as num).toDouble())) ??
+          {},
+      streakFreezeRemaining: json['streak_freeze_remaining'] as int? ?? 1,
+      isPro: json['is_pro'] as bool? ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'user_id': userId,
+      'streak_days': streakDays,
+      'total_xp': totalXp,
+      'level': level,
+      'today_assessment_count': todayAssessmentCount,
+      'last_active_date': lastActiveDate?.toIso8601String(),
+      'completed_lessons': completedLessons.toList(),
+      'completed_units': completedUnits.toList(),
+      'earned_badges': earnedBadges.toList(),
+      'phoneme_scores': phonemeScores,
+      'streak_freeze_remaining': streakFreezeRemaining,
+    };
+  }
+
   UserProgress copyWith({
+    String? userId,
     int? streakDays,
     int? totalXp,
     int? level,
@@ -41,7 +81,7 @@ class UserProgress {
     bool? isPro,
   }) {
     return UserProgress(
-      oderId: oderId,
+      userId: userId ?? this.userId,
       streakDays: streakDays ?? this.streakDays,
       totalXp: totalXp ?? this.totalXp,
       level: level ?? this.level,
@@ -65,6 +105,12 @@ class UserProgress {
     if (streakDays >= 30) return 'silver';
     if (streakDays >= 7) return 'bronze';
     return 'none';
+  }
+
+  static Set<String> _toStringSet(dynamic value) {
+    if (value == null) return {};
+    if (value is List) return value.map((e) => e.toString()).toSet();
+    return {};
   }
 }
 

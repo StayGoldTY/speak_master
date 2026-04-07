@@ -21,13 +21,13 @@ class StorageService {
 
   UserProgress loadProgress() {
     return UserProgress(
-      oderId: 'local',
+      userId: 'local',
       streakDays: _prefs.getInt(_keyStreak) ?? 0,
       totalXp: _prefs.getInt(_keyTotalXp) ?? 0,
       level: _prefs.getInt(_keyLevel) ?? 1,
       todayAssessmentCount: _prefs.getInt(_keyTodayAssessments) ?? 0,
-      lastActiveDate: _prefs.getString(_keyLastActive) != null
-          ? DateTime.parse(_prefs.getString(_keyLastActive)!)
+      lastActiveDate: _prefs.getString(_keyLastActive) != null && _prefs.getString(_keyLastActive)!.isNotEmpty
+          ? DateTime.tryParse(_prefs.getString(_keyLastActive)!)
           : null,
       completedLessons: (_prefs.getStringList(_keyCompletedLessons) ?? []).toSet(),
       completedUnits: (_prefs.getStringList(_keyCompletedUnits) ?? []).toSet(),
@@ -38,28 +38,17 @@ class StorageService {
   }
 
   Future<void> saveProgress(UserProgress progress) async {
-    await _prefs.setInt(_keyStreak, progress.streakDays);
-    await _prefs.setInt(_keyTotalXp, progress.totalXp);
-    await _prefs.setInt(_keyLevel, progress.level);
-    await _prefs.setInt(_keyTodayAssessments, progress.todayAssessmentCount);
-    await _prefs.setString(_keyLastActive, progress.lastActiveDate?.toIso8601String() ?? '');
-    await _prefs.setStringList(_keyCompletedLessons, progress.completedLessons.toList());
-    await _prefs.setStringList(_keyCompletedUnits, progress.completedUnits.toList());
-    await _prefs.setStringList(_keyEarnedBadges, progress.earnedBadges.toList());
-    await _prefs.setBool(_keyIsPro, progress.isPro);
-    await _prefs.setInt(_keyStreakFreeze, progress.streakFreezeRemaining);
-  }
-
-  Future<void> completeLesson(String lessonId) async {
-    final lessons = _prefs.getStringList(_keyCompletedLessons) ?? [];
-    if (!lessons.contains(lessonId)) {
-      lessons.add(lessonId);
-      await _prefs.setStringList(_keyCompletedLessons, lessons);
-    }
-  }
-
-  Future<void> addXp(int xp) async {
-    final current = _prefs.getInt(_keyTotalXp) ?? 0;
-    await _prefs.setInt(_keyTotalXp, current + xp);
+    await Future.wait([
+      _prefs.setInt(_keyStreak, progress.streakDays),
+      _prefs.setInt(_keyTotalXp, progress.totalXp),
+      _prefs.setInt(_keyLevel, progress.level),
+      _prefs.setInt(_keyTodayAssessments, progress.todayAssessmentCount),
+      _prefs.setString(_keyLastActive, progress.lastActiveDate?.toIso8601String() ?? ''),
+      _prefs.setStringList(_keyCompletedLessons, progress.completedLessons.toList()),
+      _prefs.setStringList(_keyCompletedUnits, progress.completedUnits.toList()),
+      _prefs.setStringList(_keyEarnedBadges, progress.earnedBadges.toList()),
+      _prefs.setBool(_keyIsPro, progress.isPro),
+      _prefs.setInt(_keyStreakFreeze, progress.streakFreezeRemaining),
+    ]);
   }
 }

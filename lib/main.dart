@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'core/constants/env_config.dart';
+import 'services/storage_service.dart';
 import 'app.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   SystemChrome.setPreferredOrientations([
@@ -17,5 +21,20 @@ void main() {
     ),
   );
 
-  runApp(const SpeakMasterApp());
+  final storageService = StorageService();
+  await storageService.init();
+
+  if (EnvConfig.isConfigured) {
+    await Supabase.initialize(
+      url: EnvConfig.supabaseUrl,
+      anonKey: EnvConfig.supabaseAnonKey,
+    );
+  }
+
+  runApp(
+    ProviderScope(
+      overrides: [],
+      child: const SpeakMasterApp(),
+    ),
+  );
 }

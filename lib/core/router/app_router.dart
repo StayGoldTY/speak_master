@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../screens/auth/auth_screen.dart';
 import '../../screens/home/home_screen.dart';
 import '../../screens/tutorial/tutorial_map_screen.dart';
 import '../../screens/tutorial/unit_detail_screen.dart';
@@ -17,6 +18,11 @@ class AppRouter {
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/home',
     routes: [
+      GoRoute(
+        path: '/auth',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const AuthScreen(),
+      ),
       ShellRoute(
         navigatorKey: _shellNavigatorKey,
         builder: (context, state, child) => ScaffoldWithNavBar(child: child),
