@@ -49,8 +49,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   void _init() {
     final authService = _ref.read(authServiceProvider);
-    final currentUser = authService.currentUser;
+    if (authService == null) {
+      state = const AuthState(status: AuthStatus.unauthenticated);
+      return;
+    }
 
+    final currentUser = authService.currentUser;
     if (currentUser != null) {
       state = state.copyWith(status: AuthStatus.authenticated, user: currentUser);
       _loadProfile();
@@ -73,8 +77,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> _loadProfile() async {
     try {
-      final profile = await _ref.read(authServiceProvider).getProfile();
-      state = state.copyWith(profile: profile);
+      final profile = await _ref.read(authServiceProvider)?.getProfile();
+      if (profile != null) state = state.copyWith(profile: profile);
     } catch (e) {
       debugPrint('Failed to load profile: $e');
     }
@@ -89,13 +93,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<bool> signUpWithEmail(String email, String password, String? name) async {
+    final auth = _ref.read(authServiceProvider);
+    if (auth == null) return false;
+
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
-      await _ref.read(authServiceProvider).signUpWithEmail(
-        email: email,
-        password: password,
-        displayName: name,
-      );
+      await auth.signUpWithEmail(email: email, password: password, displayName: name);
       state = state.copyWith(isLoading: false);
       return true;
     } on sb.AuthException catch (e) {
@@ -105,9 +108,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<bool> signInWithEmail(String email, String password) async {
+    final auth = _ref.read(authServiceProvider);
+    if (auth == null) return false;
+
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
-      await _ref.read(authServiceProvider).signInWithEmail(email: email, password: password);
+      await auth.signInWithEmail(email: email, password: password);
       state = state.copyWith(isLoading: false);
       return true;
     } on sb.AuthException catch (e) {
@@ -118,23 +124,23 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> signInWithGoogle() async {
     state = state.copyWith(isLoading: true, errorMessage: null);
-    await _ref.read(authServiceProvider).signInWithGoogle();
+    await _ref.read(authServiceProvider)?.signInWithGoogle();
     state = state.copyWith(isLoading: false);
   }
 
   Future<void> signInWithApple() async {
     state = state.copyWith(isLoading: true, errorMessage: null);
-    await _ref.read(authServiceProvider).signInWithApple();
+    await _ref.read(authServiceProvider)?.signInWithApple();
     state = state.copyWith(isLoading: false);
   }
 
   Future<void> signOut() async {
-    await _ref.read(authServiceProvider).signOut();
+    await _ref.read(authServiceProvider)?.signOut();
     state = const AuthState(status: AuthStatus.unauthenticated);
   }
 
   Future<void> resetPassword(String email) async {
-    await _ref.read(authServiceProvider).resetPassword(email);
+    await _ref.read(authServiceProvider)?.resetPassword(email);
   }
 
   @override

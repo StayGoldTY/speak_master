@@ -6,14 +6,20 @@ import 'service_providers.dart';
 class PostsNotifier extends StateNotifier<AsyncValue<List<Post>>> {
   final Ref _ref;
 
-  PostsNotifier(this._ref) : super(const AsyncValue.loading()) {
+  PostsNotifier(this._ref) : super(const AsyncValue.data([])) {
     loadPosts();
   }
 
   Future<void> loadPosts({int page = 0}) async {
+    final service = _ref.read(communityServiceProvider);
+    if (service == null) {
+      state = const AsyncValue.data([]);
+      return;
+    }
+
     try {
       if (page == 0) state = const AsyncValue.loading();
-      final posts = await _ref.read(communityServiceProvider).getPosts(page: page);
+      final posts = await service.getPosts(page: page);
       state = AsyncValue.data(posts);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -21,11 +27,11 @@ class PostsNotifier extends StateNotifier<AsyncValue<List<Post>>> {
   }
 
   Future<void> createPost(String content, {String postType = 'share'}) async {
+    final service = _ref.read(communityServiceProvider);
+    if (service == null) return;
+
     try {
-      final post = await _ref.read(communityServiceProvider).createPost(
-        content: content,
-        postType: postType,
-      );
+      final post = await service.createPost(content: content, postType: postType);
       if (post != null && state.hasValue) {
         state = AsyncValue.data([post, ...state.value!]);
       }
@@ -35,7 +41,8 @@ class PostsNotifier extends StateNotifier<AsyncValue<List<Post>>> {
   }
 
   Future<void> toggleLike(String postId) async {
-    if (!state.hasValue) return;
+    final service = _ref.read(communityServiceProvider);
+    if (service == null || !state.hasValue) return;
 
     final posts = state.value!;
     final index = posts.indexWhere((p) => p.id == postId);
@@ -52,15 +59,17 @@ class PostsNotifier extends StateNotifier<AsyncValue<List<Post>>> {
     updatedPosts[index] = updatedPost;
     state = AsyncValue.data(updatedPosts);
 
-    await _ref.read(communityServiceProvider).toggleLike(postId);
+    await service.toggleLike(postId);
   }
 
   Future<void> deletePost(String postId) async {
-    if (!state.hasValue) return;
+    final service = _ref.read(communityServiceProvider);
+    if (service == null) return;
 
-    await _ref.read(communityServiceProvider).deletePost(postId);
-    final updatedPosts = state.value!.where((p) => p.id != postId).toList();
-    state = AsyncValue.data(updatedPosts);
+    await service.deletePost(postId);
+    if (state.hasValue) {
+      state = AsyncValue.data(state.value!.where((p) => p.id != postId).toList());
+    }
   }
 }
 
@@ -69,13 +78,19 @@ final postsProvider = StateNotifierProvider<PostsNotifier, AsyncValue<List<Post>
 });
 
 final leaderboardProvider = FutureProvider<List<LeaderboardEntry>>((ref) async {
-  return ref.read(communityServiceProvider).getLeaderboard();
+  final service = ref.read(communityServiceProvider);
+  if (service == null) return [];
+  return service.getLeaderboard();
 });
 
 final myRankProvider = FutureProvider<LeaderboardEntry?>((ref) async {
-  return ref.read(communityServiceProvider).getMyRank();
+  final service = ref.read(communityServiceProvider);
+  if (service == null) return null;
+  return service.getMyRank();
 });
 
 final commentsProvider = FutureProvider.family<List<Comment>, String>((ref, postId) async {
-  return ref.read(communityServiceProvider).getComments(postId);
+  final service = ref.read(communityServiceProvider);
+  if (service == null) return [];
+  return service.getComments(postId);
 });
