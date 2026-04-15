@@ -1,11 +1,11 @@
 {
-    "name": "speak_master",
-    "short_name": "speak_master",
+    "name": "Speak Master",
+    "short_name": "SpeakMaster",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "English Pronunciation Learning App",
+    "background_color": "#F3F6F8",
+    "theme_color": "#143A5A",
+    "description": "English pronunciation learning with a clear main track, contrast drills, and honest self-practice.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

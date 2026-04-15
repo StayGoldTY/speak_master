@@ -1,184 +1,198 @@
 # Speak Master
 
-一个面向英语朗读与发音训练的 Flutter 跨端项目，当前主要以 Flutter Web 形态作为“学习网站”来打磨，同时保留移动端运行能力。
+一个面向中文学习者的英语发音学习 Flutter 项目，当前主打 Flutter Web 形态，同时保留移动端运行能力。产品目标不是单纯展示音标，而是把“主线学习、对比训练、迁移表达、自我评估、社区互助”串成一条真正可走通的学习路径。
 
-## 项目定位
+线上地址：
 
-Speak Master 的核心目标不是单纯展示音标，而是把“教程学习 + 自主练习 + 评测反馈 + 成长激励”串成一条完整的学习路径：
+- GitHub Pages: [https://staygoldty.github.io/speak_master/](https://staygoldty.github.io/speak_master/)
 
-- `教程 Learn`：按照单元组织发音知识与练习步骤
-- `练习 Practice`：自由朗读、素材跟读、绕口令挑战
-- `评测 Assessment`：朗读句子后的发音维度反馈
-- `社区 Community`：学习动态、排行榜、互动
-- `我的 Profile`：成长数据、徽章、学习偏好
+## 当前状态
 
-## 当前阶段
+当前已经完成教程主线第一阶段：
 
-这一轮实现的是“教程主线第一阶段”：
+- `u1-u10` 已开放，聚焦 `Foundation + Vowels`
+- `u11-u32` 不再只是简单的 upcoming 占位，而是提供可浏览的路线预告
+- 教程地图、单元详情、课程页、首页、练习、评估、社区、个人页都已完成一轮可用化重构
+- Web 端已启用更适合 GitHub Pages 的 hash 路由
+- 站点主题、色板和图标已升级为更现代的视觉风格
 
-- 对外开放 `u1-u10`
-- 聚焦 `Foundation + Vowels`
-- 课程页改为真实数据驱动，而不是固定演示稿
-- 未进入第一阶段的单元统一显示为“即将开放”
-- 账号、社区、资料设置页已经具备一轮真实可用化结构
+## 已实现能力
 
-### 已补齐的教程范围
+### 1. 教程主线
 
-- `u1-u4`：发音基础
-- `u5-u10`：元音与双元音
+- 教程地图基于 `units_data.dart` 与 `lessons_data.dart` 数据驱动渲染
+- `u1-u10` 每个单元提供 3 节真实课程
+- 课程步骤覆盖：
+  - `text`
+  - `multipleChoice`
+  - `minimalPairQuiz`
+  - `recordAndCompare`
+  - `audio`
+  - `readAloud`
+- `u11-u32` 当前不会假装成已上线课程，但现在都可以点进单元详情查看：
+  - 将学什么
+  - 常见误区
+  - 真实使用场景
+  - 计划中的 3 节结构
+  - 完成标志
 
-每个已开放单元都包含 3 节真实课程，课程步骤覆盖：
+### 2. 学习提效设计
 
-- `text`
-- `audio`（当前仅做诚实的听音准备说明，不伪装成已接音频）
-- `recordAndCompare`
-- `minimalPairQuiz`
-- `multipleChoice`
-- `readAloud`
+首页和教程页当前强化的是“三段式掌握循环”：
 
-### 暂未在主链路开放的内容
+1. `Observe`：先看口型、气流、重音落点
+2. `Contrast`：再做最小对立，把边界练出来
+3. `Transfer`：最后带进短句、朗读和真实表达
 
-- `u11-u32`
-- 部分历史上已写入仓库的数据样稿（如 `u12`、`u22`）目前保留在数据层，但不会在第一阶段主学习链路中对外开放
+这比只刷单一题型更适合中文学习者快速建立“能分清、能说出、能迁移”的能力。
 
-## 当前完成度
+### 3. 练习与评估
 
-### 教程 / 练习主线
+- `Practice` 支持：
+  - 自由朗读
+  - 跟读参考材料
+  - 绕口令挑战
+- `Assessment` 支持引导式自评，并将结果回写到进度系统
+- `progress_provider.dart` 已避免重复刷 XP，并支持 `completeAssessment`
 
-- 教程地图、单元详情、课程页已经围绕数据驱动的 `u1-u10` 主链路重构
-- `u11-u32` 当前以 `upcoming` / 后续阶段形式展示，不直接放出入口
-- `Practice`、`Assessment`、`Home`、`Profile` 已完成一轮可用化整理
+### 4. 账号功能
 
-### 账号能力
-
-- 已支持邮箱登录 / 注册
+- 已支持邮箱注册 / 登录
 - 已支持 Google / Apple OAuth 入口
-- 已支持 reset password
-- 已支持读取和更新账号资料：`displayName`、`username`、`avatarUrl`、`accentPreference`
-- 已新增账号资料页 `lib/screens/profile/edit_profile_screen.dart`
-- 登录入口支持带来源页返回，例如从社区或资料页进入登录后回到原页面
+- 已支持重置密码
+- 已支持读取和更新账号资料：
+  - `displayName`
+  - `username`
+  - `avatarUrl`
+  - `accentPreference`
+- 已新增账号资料页：
+  - `lib/screens/profile/edit_profile_screen.dart`
+- 登录入口支持带来源页返回，例如从社区或账号资料页进入登录后返回原页面
 
-### 社区能力
+### 5. 社区功能
 
-- 已支持 posts / likes / comments / leaderboard 的服务层接入
-- 社区 UI 已支持发帖、点赞、查看评论、发表评论
-- 已支持用户删除自己的帖子和自己的评论
-- 当前没有伪装成“已具备审核流、复杂通知、AI 社区助教”等并不存在的能力
+- `community_service.dart` 已支持：
+  - `posts`
+  - `likes`
+  - `comments`
+  - `leaderboard`
+- 社区 UI 已支持：
+  - 发帖
+  - 点赞
+  - 评论
+  - 删除自己的帖子
+  - 删除自己的评论
+  - 查看我的排名
 
-### 诚实边界
+### 6. 偏好与本地存储
 
-- `audio` 步骤当前只做听音准备说明，不假装已有真实播放资源
-- `recordAndCompare` 当前是自练入口，不假装已有真实对照回放
-- `assessment` 页面当前只展示真实已实现的结构，不假装已有正式发音评分引擎
-- 项目明确避免“假播放 / 假评分 / 假波形”
+- `storage_service.dart` 已支持持久化：
+  - accent 偏好
+  - reminder 偏好
 
-## 技术栈
+## 诚实边界
 
-- Flutter 3 / Dart 3
-- Riverpod
-- GoRouter
-- SharedPreferences
-- Supabase（可选）
-- Vercel 静态部署输出 `build/web`
+这个项目当前明确坚持以下原则：
 
-## 目录说明
+- 不做假播放
+- 不做假评分
+- 不做假波形
+- 没有真实能力时必须明确说明，而不是用看起来“像完成了”的 UI 欺骗用户
 
-- `lib/data/`
-  教程数据、音位数据、单元配置
-- `lib/screens/tutorial/`
-  教程地图、单元详情、课程页
-- `lib/providers/`
-  认证、进度、社区等状态管理
-- `lib/services/`
-  本地存储、同步、认证、社区服务
-- `supabase/migrations/`
-  项目当前数据库初始化脚本
+因此目前：
+
+- `audio` 步骤不会冒充已有标准音频播放
+- `recordAndCompare` 是诚实的自练入口，不会假装保存并回放录音
+- `assessment` 是引导式自评，不是假装 AI 自动发音评分
 
 ## 本地运行
 
-1. 安装 Flutter SDK，并确保 `flutter` 命令可用
-2. 在项目根目录执行：
+### 环境
+
+- Flutter 3
+- Dart 3
+
+### 安装依赖
 
 ```bash
 flutter pub get
+```
+
+### 运行 Web
+
+```bash
 flutter run -d chrome
 ```
 
-如果需要启用 Supabase：
+### 可选：接入 Supabase
 
 ```bash
-flutter run -d chrome \
-  --dart-define=SUPABASE_URL=your-url \
+flutter run -d chrome ^
+  --dart-define=SUPABASE_URL=your-url ^
   --dart-define=SUPABASE_ANON_KEY=your-key
 ```
 
-如果不传这两个环境变量，项目会自动退回本地模式运行。
+如果不传 Supabase 配置，项目会自动以本地体验模式运行。
 
-## 测试与检查
-
-建议在具备 Flutter 工具链的环境执行：
+## 质量检查
 
 ```bash
 flutter analyze
-flutter test
+flutter test test/widget_test.dart
+flutter build web --release --base-href /speak_master/
 ```
 
-当前这个工作线程所在环境里，`flutter` / `dart` 还没有加入 PATH，所以这轮只能先做静态修正和测试代码收口，无法在这里直接运行上述命令。
-
-本次改动新增的测试主要覆盖：
+当前测试重点覆盖：
 
 - `u1-u10` 教程数据完整性
-- `targetPhonemes` 与 `phonemes_data.dart` 的映射一致性
-- 教程地图的开放 / 即将开放状态
-- 单元详情页显示真实课程
-- 课程页对 `multipleChoice` / `minimalPairQuiz` / `recordAndCompare` 的关键步骤渲染
+- `targetPhonemes` 与 `phonemes_data.dart` 的映射合法性
+- 教程地图已开放 / 预告单元的关键入口
+- 已开放单元详情页与真实课程列表
+- lesson 中 `multipleChoice` / `minimalPairQuiz` / `recordAndCompare` 关键步骤
 - auth 页面来源页返回能力
-- 教程地图、单元详情、课程页的手机与桌面宽度渲染
+- 教程主链页面在手机和桌面宽度下的稳定渲染
 
-## 部署说明
-
-项目当前使用 `vercel.json` 指向 Flutter Web 输出目录：
-
-- 构建产物目录：`build/web`
-- 所有路由重写到 `index.html`
-
-常见部署流程：
-
-```bash
-flutter build web
-vercel deploy
-```
+## 部署
 
 ### GitHub Pages
 
-仓库现在也支持通过 GitHub Actions 部署到 GitHub Pages：
+仓库当前已配置 GitHub Pages 自动部署：
 
-- 工作流文件：`.github/workflows/deploy-pages.yml`
-- 默认会在推送到 `master` 后自动执行
-- 如果仓库名是 `speak_master`，最终地址会类似：
-  `https://staygoldty.github.io/speak_master/`
-- 如果仓库本身就是 `staygoldty.github.io` 这类用户主页仓库，则会直接部署到根路径 `/`
+- Workflow 文件：`.github/workflows/deploy-pages.yml`
+- 推送到 `master` 后会自动执行：
+  - `flutter analyze`
+  - `flutter test test/widget_test.dart`
+  - `flutter build web --release --base-href /speak_master/`
 
-这个工作流会：
+由于 GitHub Pages 的子路径刷新限制，Web 端当前显式使用 hash 路由，所以深层链接会是这种形式：
 
-- 自动执行 `flutter analyze`
-- 自动执行 `flutter test test/widget_test.dart`
-- 自动用匹配仓库路径的 `--base-href` 构建 Flutter Web
-- 自动生成 `404.html`，避免 GitHub Pages 下刷新子路由时直接丢失页面
+- `https://staygoldty.github.io/speak_master/#/learn`
+- `https://staygoldty.github.io/speak_master/#/unit/u5`
 
-如果需要让已部署站点启用真实账号 / 社区能力，请在目标 GitHub 仓库中配置：
+### 需要的 GitHub Secrets
+
+如果希望线上站点启用真实账号 / 社区能力，请配置：
 
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 
-如果这两个 secrets 没有配置，页面仍然可以正常发布，但会以本地体验 / 游客模式运行。
+未配置时，页面仍然可以部署，但会以本地体验 / 游客模式运行。
 
-## 后续建议
+## 目录说明
 
-- 接入真实课程音频资源与播放能力
-- 把录音步骤升级为可回放、可对照的练习流
-- 接入真实发音评分，而不是仅做自练 UI
-- 分阶段开放 `u11-u32`
-- 继续清理历史数据文件中的旧编码和旧样稿内容
-- 为社区补充编辑能力、审核策略和更细的互动反馈
-- 在接好 Flutter 工具链后补跑 `flutter analyze` 与 `flutter test`
+- `lib/data/`：课程、单元、音位、路线预告等数据
+- `lib/screens/tutorial/`：教程地图、单元详情、课程页
+- `lib/screens/home/`：首页与学习提效入口
+- `lib/screens/practice/`：自由练习、跟读、绕口令
+- `lib/screens/community/`：动态、评论、排行榜
+- `lib/screens/profile/`：个人页、账号资料、偏好设置
+- `lib/providers/`：认证、进度、社区等状态管理
+- `lib/services/`：认证、社区、存储等服务
+
+## 下一步建议
+
+- 分阶段继续把 `u11-u32` 补成真实可学习课程
+- 接入真实标准音频播放能力
+- 接入真实录音回放与对照能力
+- 在能力真实可用后，再考虑发音评分与更细粒度反馈
+- 继续优化社区的编辑、举报与内容治理能力

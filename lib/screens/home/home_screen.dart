@@ -19,10 +19,15 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final progress = ref.watch(progressProvider);
     final authState = ref.watch(authProvider);
-    final releasedUnits = UnitsData.units
-        .where((unit) => LessonsData.isReleasedUnit(unit.id) && LessonsData.hasAuthoredLessons(unit.id))
-        .toList()
-      ..sort((a, b) => a.order.compareTo(b.order));
+    final releasedUnits =
+        UnitsData.units
+            .where(
+              (unit) =>
+                  LessonsData.isReleasedUnit(unit.id) &&
+                  LessonsData.hasAuthoredLessons(unit.id),
+            )
+            .toList()
+          ..sort((a, b) => a.order.compareTo(b.order));
     final nextLesson = _findNextLesson(progress.completedLessons);
     final totalReleasedLessons = releasedUnits.fold<int>(
       0,
@@ -78,6 +83,20 @@ class HomeScreen extends ConsumerWidget {
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                  child: _FastTrackSection(
+                    nextLesson: nextLesson,
+                    weakPhonemes: weakPhonemes,
+                    onLearn: () => nextLesson == null
+                        ? context.go('/learn')
+                        : context.push('/lesson/${nextLesson.id}'),
+                    onPractice: () => context.go('/practice'),
+                    onAssessment: () => context.push('/assessment'),
+                  ),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                   child: _QuickActions(
                     onLearn: () => context.go('/learn'),
                     onPractice: () => context.go('/practice'),
@@ -109,10 +128,12 @@ class HomeScreen extends ConsumerWidget {
   }
 
   Lesson? _findNextLesson(Set<String> completedLessonIds) {
-    final releasedUnits = [...UnitsData.units]..sort((a, b) => a.order.compareTo(b.order));
+    final releasedUnits = [...UnitsData.units]
+      ..sort((a, b) => a.order.compareTo(b.order));
 
     for (final unit in releasedUnits) {
-      if (!LessonsData.isReleasedUnit(unit.id) || !LessonsData.hasAuthoredLessons(unit.id)) {
+      if (!LessonsData.isReleasedUnit(unit.id) ||
+          !LessonsData.hasAuthoredLessons(unit.id)) {
         continue;
       }
 
@@ -149,9 +170,9 @@ class _Header extends StatelessWidget {
               Text(
                 '你好，$displayName',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
-                    ),
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
               ),
               const SizedBox(height: 6),
               const Text(
@@ -180,7 +201,9 @@ class _ContinueCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final progress = totalReleasedLessons == 0 ? 0.0 : completedReleasedLessons / totalReleasedLessons;
+    final progress = totalReleasedLessons == 0
+        ? 0.0
+        : completedReleasedLessons / totalReleasedLessons;
 
     return Container(
       padding: const EdgeInsets.all(22),
@@ -193,17 +216,30 @@ class _ContinueCard extends StatelessWidget {
         children: [
           const Text(
             '继续学习',
-            style: TextStyle(fontSize: 13, color: Colors.white70, fontWeight: FontWeight.w700),
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.white70,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             nextLesson?.titleCn ?? '第一阶段课程已经全部完成',
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white, height: 1.25),
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+              height: 1.25,
+            ),
           ),
           const SizedBox(height: 10),
           Text(
             nextLesson?.description ?? '可以回到练习中心继续做自由朗读、跟读练习或自评巩固。',
-            style: const TextStyle(fontSize: 14, color: Colors.white70, height: 1.7),
+            style: const TextStyle(
+              fontSize: 14,
+              color: Colors.white70,
+              height: 1.7,
+            ),
           ),
           const SizedBox(height: 16),
           ClipRRect(
@@ -301,6 +337,204 @@ class _QuickActions extends StatelessWidget {
   }
 }
 
+class _FastTrackSection extends StatelessWidget {
+  final Lesson? nextLesson;
+  final List<String> weakPhonemes;
+  final VoidCallback onLearn;
+  final VoidCallback onPractice;
+  final VoidCallback onAssessment;
+
+  const _FastTrackSection({
+    required this.nextLesson,
+    required this.weakPhonemes,
+    required this.onLearn,
+    required this.onPractice,
+    required this.onAssessment,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final steps = [
+      _FastTrackStepData(
+        step: '1',
+        title: '先推 1 节主线',
+        subtitle: nextLesson != null
+            ? '优先完成 ${nextLesson!.titleCn}'
+            : '主线已清空，改为回看教程地图',
+        cta: nextLesson != null ? '继续主线' : '查看主线',
+        color: AppColors.primary,
+        icon: Icons.school_outlined,
+        onTap: onLearn,
+      ),
+      _FastTrackStepData(
+        step: '2',
+        title: '再做 1 组区分',
+        subtitle: weakPhonemes.isEmpty
+            ? '去练习中心做一轮跟读或绕口令'
+            : '优先回练 /${weakPhonemes.take(2).join('/ /')}/',
+        cta: '去练习',
+        color: AppColors.accentOrange,
+        icon: Icons.compare_arrows_rounded,
+        onTap: onPractice,
+      ),
+      _FastTrackStepData(
+        step: '3',
+        title: '最后做 1 次迁移',
+        subtitle: '用自由朗读或自评检查这轮训练有没有带进句子里',
+        cta: '去自评',
+        color: AppColors.secondary,
+        icon: Icons.rocket_launch_outlined,
+        onTap: onAssessment,
+      ),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth >= 860;
+          final content = [
+            const Text(
+              '15 分钟掌握循环',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              '把“学习新概念、做区分训练、迁移到真实表达”拆开走，通常比一直刷同一种练习更快稳。',
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+                height: 1.6,
+              ),
+            ),
+            const SizedBox(height: 16),
+          ];
+
+          if (isWide) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ...content,
+                Row(
+                  children: [
+                    for (var index = 0; index < steps.length; index++) ...[
+                      Expanded(child: _FastTrackStep(data: steps[index])),
+                      if (index != steps.length - 1) const SizedBox(width: 12),
+                    ],
+                  ],
+                ),
+              ],
+            );
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ...content,
+              for (var index = 0; index < steps.length; index++) ...[
+                _FastTrackStep(data: steps[index]),
+                if (index != steps.length - 1) const SizedBox(height: 10),
+              ],
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _FastTrackStepData {
+  final String step;
+  final String title;
+  final String subtitle;
+  final String cta;
+  final Color color;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _FastTrackStepData({
+    required this.step,
+    required this.title,
+    required this.subtitle,
+    required this.cta,
+    required this.color,
+    required this.icon,
+    required this.onTap,
+  });
+}
+
+class _FastTrackStep extends StatelessWidget {
+  final _FastTrackStepData data;
+
+  const _FastTrackStep({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: data.color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: data.color.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  data.step,
+                  style: TextStyle(
+                    color: data.color,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Icon(data.icon, color: data.color),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            data.title,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            data.subtitle,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+              height: 1.55,
+            ),
+          ),
+          const SizedBox(height: 14),
+          TextButton(
+            onPressed: data.onTap,
+            style: TextButton.styleFrom(padding: EdgeInsets.zero),
+            child: Text(
+              data.cta,
+              style: TextStyle(color: data.color, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ActionCardData {
   final String title;
   final String subtitle;
@@ -352,12 +586,19 @@ class _ActionCard extends StatelessWidget {
                 children: [
                   Text(
                     data.title,
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     data.subtitle,
-                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.55),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                      height: 1.55,
+                    ),
                   ),
                 ],
               ),
@@ -386,17 +627,23 @@ class _RecommendationSection extends StatelessWidget {
     final cards = [
       _RecommendationCardData(
         title: '主线优先',
-        subtitle: nextLesson != null ? '先推进 ${nextLesson!.titleCn}' : '主线课程已清空，转去练习中心巩固即可',
+        subtitle: nextLesson != null
+            ? '先推进 ${nextLesson!.titleCn}'
+            : '主线课程已清空，转去练习中心巩固即可',
         accent: AppColors.primary,
       ),
       _RecommendationCardData(
         title: '今天做一次自评',
-        subtitle: progress.todayAssessmentCount > 0 ? '你今天已经完成过一次自评，可以按结果回练' : '至少拿到一份今天的自查结果，才能知道下一轮怎么练',
+        subtitle: progress.todayAssessmentCount > 0
+            ? '你今天已经完成过一次自评，可以按结果回练'
+            : '至少拿到一份今天的自查结果，才能知道下一轮怎么练',
         accent: AppColors.accentOrange,
       ),
       _RecommendationCardData(
         title: '回看薄弱音',
-        subtitle: weakPhonemes.isEmpty ? '目前没有明显偏弱音位记录，继续按主线推进' : '优先回练 /${weakPhonemes.join('/ /')}/ 这些位置',
+        subtitle: weakPhonemes.isEmpty
+            ? '目前没有明显偏弱音位记录，继续按主线推进'
+            : '优先回练 /${weakPhonemes.join('/ /')}/ 这些位置',
         accent: AppColors.secondary,
       ),
     ];
@@ -436,12 +683,19 @@ class _RecommendationSection extends StatelessWidget {
                       children: [
                         Text(
                           card.title,
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           card.subtitle,
-                          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.55),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                            height: 1.55,
+                          ),
                         ),
                       ],
                     ),
@@ -494,7 +748,11 @@ class _WeakSoundSection extends StatelessWidget {
             weakPhonemes.isEmpty
                 ? '你目前还没有明显偏弱的音位记录，可以继续按教程顺序推进，或者做一轮自评建立基线。'
                 : '优先复习这些偏弱音位：/${weakPhonemes.join('/ /')}/。',
-            style: const TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.7),
+            style: const TextStyle(
+              fontSize: 14,
+              color: AppColors.textSecondary,
+              height: 1.7,
+            ),
           ),
           const SizedBox(height: 14),
           Wrap(
@@ -505,7 +763,9 @@ class _WeakSoundSection extends StatelessWidget {
                     _StrengthChip(label: '继续保持'),
                     _StrengthChip(label: '去做一次自评'),
                   ]
-                : weakPhonemes.map((item) => _StrengthChip(label: '/$item/')).toList(),
+                : weakPhonemes
+                      .map((item) => _StrengthChip(label: '/$item/'))
+                      .toList(),
           ),
         ],
       ),

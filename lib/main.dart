@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/constants/env_config.dart';
 import 'services/storage_service.dart';
@@ -8,6 +9,7 @@ import 'app.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  setUrlStrategy(HashUrlStrategy());
 
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,

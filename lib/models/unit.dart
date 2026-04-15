@@ -54,3 +54,25 @@ class LearningUnit {
     this.badgeId,
   });
 }
+
+class UnitRoadmap {
+  final String stageLabel;
+  final String coreSkill;
+  final String unlockHint;
+  final String completionSignal;
+  final List<String> outcomes;
+  final List<String> pitfalls;
+  final List<String> practiceScenes;
+  final List<String> lessonPreviewTitles;
+
+  const UnitRoadmap({
+    required this.stageLabel,
+    required this.coreSkill,
+    required this.unlockHint,
+    required this.completionSignal,
+    required this.outcomes,
+    required this.pitfalls,
+    required this.practiceScenes,
+    required this.lessonPreviewTitles,
+  });
+}

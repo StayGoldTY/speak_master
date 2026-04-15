@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../data/lessons_data.dart';
+import '../../data/unit_roadmaps_data.dart';
 import '../../data/units_data.dart';
 import '../../models/unit.dart';
 
@@ -12,12 +13,19 @@ class TutorialMapScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final releasedUnits = UnitsData.units
-        .where((unit) => LessonsData.isReleasedUnit(unit.id) && LessonsData.hasAuthoredLessons(unit.id))
+        .where(
+          (unit) =>
+              LessonsData.isReleasedUnit(unit.id) &&
+              LessonsData.hasAuthoredLessons(unit.id),
+        )
         .toList();
     final releasedLessons = releasedUnits.fold<int>(
       0,
       (sum, unit) => sum + LessonsData.getAuthoredLessonCount(unit.id),
     );
+    final previewUnits = UnitsData.units
+        .where((unit) => !LessonsData.isReleasedUnit(unit.id))
+        .length;
 
     return SafeArea(
       child: CustomScrollView(
@@ -25,10 +33,7 @@ class TutorialMapScreen extends StatelessWidget {
           const SliverAppBar(
             floating: true,
             centerTitle: true,
-            title: Text(
-              '发音教程',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
+            title: Text('发音教程', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
           SliverToBoxAdapter(
             child: _PageFrame(
@@ -37,7 +42,16 @@ class TutorialMapScreen extends StatelessWidget {
                 child: _IntroCard(
                   releasedUnitCount: releasedUnits.length,
                   releasedLessonCount: releasedLessons,
+                  previewUnitCount: previewUnits,
                 ),
+              ),
+            ),
+          ),
+          const SliverToBoxAdapter(
+            child: _PageFrame(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
+                child: _MethodStrip(),
               ),
             ),
           ),
@@ -45,7 +59,10 @@ class TutorialMapScreen extends StatelessWidget {
             delegate: SliverChildBuilderDelegate(
               (context, index) => _PageFrame(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 8,
+                  ),
                   child: _BlockSection(block: UnitsData.blocks[index]),
                 ),
               ),
@@ -79,10 +96,12 @@ class _PageFrame extends StatelessWidget {
 class _IntroCard extends StatelessWidget {
   final int releasedUnitCount;
   final int releasedLessonCount;
+  final int previewUnitCount;
 
   const _IntroCard({
     required this.releasedUnitCount,
     required this.releasedLessonCount,
+    required this.previewUnitCount,
   });
 
   @override
@@ -90,12 +109,15 @@ class _IntroCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.primary, AppColors.primaryLight],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        gradient: AppColors.gradientPrimary,
         borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.18),
+            blurRadius: 28,
+            offset: const Offset(0, 12),
+          ),
+        ],
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -109,6 +131,7 @@ class _IntroCard extends StatelessWidget {
                     _IntroStats(
                       releasedUnitCount: releasedUnitCount,
                       releasedLessonCount: releasedLessonCount,
+                      previewUnitCount: previewUnitCount,
                     ),
                   ],
                 )
@@ -120,6 +143,7 @@ class _IntroCard extends StatelessWidget {
                     _IntroStats(
                       releasedUnitCount: releasedUnitCount,
                       releasedLessonCount: releasedLessonCount,
+                      previewUnitCount: previewUnitCount,
                     ),
                   ],
                 );
@@ -138,17 +162,17 @@ class _IntroCopy extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '第一阶段主线',
+          'Phase 1 Main Track',
           style: TextStyle(
             fontSize: 12,
-            letterSpacing: 0.4,
+            letterSpacing: 0.5,
             color: Colors.white70,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w700,
           ),
         ),
         SizedBox(height: 8),
         Text(
-          '先把 Foundation + Vowels 这一段主线走扎实，再逐步开放更难的模块。',
+          '先把 Foundation 与 Vowels 主线走扎实，再进入辅音、节奏、语法发音和 Phonics。',
           style: TextStyle(
             fontSize: 24,
             height: 1.35,
@@ -158,12 +182,8 @@ class _IntroCopy extends StatelessWidget {
         ),
         SizedBox(height: 12),
         Text(
-          '当前公开学习链路固定为 u1-u10。后续单元统一展示为“即将开放”，避免你误点进占位课或半成品页面。',
-          style: TextStyle(
-            fontSize: 14,
-            height: 1.7,
-            color: Colors.white70,
-          ),
+          'u1-u10 现在是完整可学链路。u11-u32 仍然不会冒充“已上线课程”，但现在都能点进去看清楚：将学什么、常见误区、真实场景和完成标志。',
+          style: TextStyle(fontSize: 14, height: 1.7, color: Colors.white70),
         ),
       ],
     );
@@ -173,10 +193,12 @@ class _IntroCopy extends StatelessWidget {
 class _IntroStats extends StatelessWidget {
   final int releasedUnitCount;
   final int releasedLessonCount;
+  final int previewUnitCount;
 
   const _IntroStats({
     required this.releasedUnitCount,
     required this.releasedLessonCount,
+    required this.previewUnitCount,
   });
 
   @override
@@ -184,7 +206,7 @@ class _IntroStats extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.16),
+        color: Colors.white.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
@@ -195,6 +217,8 @@ class _IntroStats extends StatelessWidget {
           _StatLine(label: '真实课程数', value: '$releasedLessonCount'),
           const SizedBox(height: 12),
           const _StatLine(label: '当前阶段', value: 'u1-u10'),
+          const SizedBox(height: 12),
+          _StatLine(label: '可预览单元', value: '$previewUnitCount'),
         ],
       ),
     );
@@ -231,6 +255,134 @@ class _StatLine extends StatelessWidget {
   }
 }
 
+class _MethodStrip extends StatelessWidget {
+  const _MethodStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    const items = [
+      _MethodCardData(
+        title: 'Observe',
+        subtitle: '先看口型、气流和重音落点',
+        icon: Icons.visibility_outlined,
+        color: AppColors.primary,
+      ),
+      _MethodCardData(
+        title: 'Contrast',
+        subtitle: '再做最小对立，把边界练出来',
+        icon: Icons.compare_arrows_rounded,
+        color: AppColors.accentOrange,
+      ),
+      _MethodCardData(
+        title: 'Transfer',
+        subtitle: '最后带进短句、朗读和真实表达',
+        icon: Icons.rocket_launch_outlined,
+        color: AppColors.secondary,
+      ),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth >= 860) {
+            return Row(
+              children: [
+                for (var index = 0; index < items.length; index++) ...[
+                  Expanded(child: _MethodCard(data: items[index])),
+                  if (index != items.length - 1) const SizedBox(width: 12),
+                ],
+              ],
+            );
+          }
+
+          return Column(
+            children: [
+              for (var index = 0; index < items.length; index++) ...[
+                _MethodCard(data: items[index]),
+                if (index != items.length - 1) const SizedBox(height: 10),
+              ],
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _MethodCardData {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+
+  const _MethodCardData({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+  });
+}
+
+class _MethodCard extends StatelessWidget {
+  final _MethodCardData data;
+
+  const _MethodCard({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: data.color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: data.color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(data.icon, color: data.color),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  data.title,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  data.subtitle,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _BlockSection extends StatelessWidget {
   final LearningBlock block;
 
@@ -247,7 +399,7 @@ class _BlockSection extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _BlockHeader(block: block),
+            _BlockHeader(block: block, units: units),
             const SizedBox(height: 14),
             if (isWide)
               GridView.builder(
@@ -257,13 +409,11 @@ class _BlockSection extends StatelessWidget {
                   crossAxisCount: 2,
                   crossAxisSpacing: 14,
                   mainAxisSpacing: 14,
-                  mainAxisExtent: 132,
+                  mainAxisExtent: 154,
                 ),
                 itemCount: units.length,
-                itemBuilder: (context, index) => _UnitTile(
-                  unit: units[index],
-                  color: block.color,
-                ),
+                itemBuilder: (context, index) =>
+                    _UnitTile(unit: units[index], color: block.color),
               )
             else
               ...units.map(
@@ -281,11 +431,16 @@ class _BlockSection extends StatelessWidget {
 
 class _BlockHeader extends StatelessWidget {
   final LearningBlock block;
+  final List<LearningUnit> units;
 
-  const _BlockHeader({required this.block});
+  const _BlockHeader({required this.block, required this.units});
 
   @override
   Widget build(BuildContext context) {
+    final releasedCount = units
+        .where((unit) => LessonsData.isReleasedUnit(unit.id))
+        .length;
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -330,10 +485,10 @@ class _BlockHeader extends StatelessWidget {
             ),
           ),
           Text(
-            '${block.unitCount} 单元',
+            '$releasedCount / ${block.unitCount}',
             style: TextStyle(
               fontSize: 12,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
               color: block.color,
             ),
           ),
@@ -347,32 +502,38 @@ class _UnitTile extends StatelessWidget {
   final LearningUnit unit;
   final Color color;
 
-  const _UnitTile({
-    required this.unit,
-    required this.color,
-  });
+  const _UnitTile({required this.unit, required this.color});
 
   @override
   Widget build(BuildContext context) {
-    final isReleased = LessonsData.isReleasedUnit(unit.id) && LessonsData.hasAuthoredLessons(unit.id);
+    final isReleased =
+        LessonsData.isReleasedUnit(unit.id) &&
+        LessonsData.hasAuthoredLessons(unit.id);
     final hasAuthoredContent = LessonsData.hasAuthoredLessons(unit.id);
+    final roadmap = UnitRoadmapsData.maybeOf(unit.id);
+
     final statusLabel = isReleased
         ? '已开放'
         : hasAuthoredContent
-            ? '下一阶段'
-            : '即将开放';
+        ? '内容预告'
+        : '路线预告';
+    final supportLine = isReleased
+        ? '${LessonsData.getAuthoredLessonCount(unit.id)} 节真实课程'
+        : roadmap?.coreSkill ?? '当前不会开放进入，但可以先浏览学习路线。';
 
     return InkWell(
       key: ValueKey('unit-tile-${unit.id}'),
-      onTap: isReleased ? () => context.push('/unit/${unit.id}') : null,
+      onTap: () => context.push('/unit/${unit.id}'),
       borderRadius: BorderRadius.circular(20),
       child: Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: isReleased ? Colors.white : Colors.grey.shade50,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isReleased ? color.withValues(alpha: 0.2) : Colors.grey.shade200,
+            color: isReleased
+                ? color.withValues(alpha: 0.18)
+                : color.withValues(alpha: 0.1),
           ),
         ),
         child: Row(
@@ -381,7 +542,7 @@ class _UnitTile extends StatelessWidget {
               width: 46,
               height: 46,
               decoration: BoxDecoration(
-                color: isReleased ? color.withValues(alpha: 0.1) : Colors.grey.shade200,
+                color: color.withValues(alpha: isReleased ? 0.12 : 0.08),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Center(
@@ -390,7 +551,7 @@ class _UnitTile extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
-                    color: isReleased ? color : Colors.grey.shade500,
+                    color: isReleased ? color : color.withValues(alpha: 0.75),
                   ),
                 ),
               ),
@@ -405,18 +566,23 @@ class _UnitTile extends StatelessWidget {
                       Expanded(
                         child: Text(
                           unit.titleCn,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
-                            color: isReleased ? AppColors.textPrimary : AppColors.textSecondary,
+                            color: AppColors.textPrimary,
                           ),
                         ),
                       ),
                       Container(
                         key: ValueKey('status-${unit.id}'),
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
-                          color: isReleased ? color.withValues(alpha: 0.1) : Colors.grey.shade200,
+                          color: color.withValues(
+                            alpha: isReleased ? 0.12 : 0.08,
+                          ),
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: Text(
@@ -424,7 +590,9 @@ class _UnitTile extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: isReleased ? color : AppColors.textSecondary,
+                            color: isReleased
+                                ? color
+                                : color.withValues(alpha: 0.85),
                           ),
                         ),
                       ),
@@ -440,13 +608,23 @@ class _UnitTile extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 10),
+                  if (!isReleased && roadmap != null) ...[
+                    Text(
+                      roadmap.stageLabel,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: color,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                  ],
                   Text(
-                    isReleased
-                        ? '${LessonsData.getAuthoredLessonCount(unit.id)} 节真实课程'
-                        : '本阶段不开放进入，避免占位内容打断学习节奏。',
+                    supportLine,
                     style: TextStyle(
                       fontSize: 12,
-                      color: isReleased ? color : AppColors.textHint,
+                      color: isReleased ? color : AppColors.textSecondary,
+                      height: 1.5,
                     ),
                   ),
                 ],
@@ -454,8 +632,8 @@ class _UnitTile extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Icon(
-              isReleased ? Icons.chevron_right : Icons.schedule,
-              color: isReleased ? color : AppColors.textHint,
+              isReleased ? Icons.chevron_right : Icons.visibility_outlined,
+              color: isReleased ? color : color.withValues(alpha: 0.72),
             ),
           ],
         ),

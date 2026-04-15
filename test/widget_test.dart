@@ -31,11 +31,17 @@ void main() {
       'u9',
       'u10',
     ];
-    final phonemeIds = PhonemesData.allPhonemes.map((phoneme) => phoneme.id).toSet();
+    final phonemeIds = PhonemesData.allPhonemes
+        .map((phoneme) => phoneme.id)
+        .toSet();
 
     for (final unit in UnitsData.units) {
       for (final targetPhoneme in unit.targetPhonemes) {
-        expect(phonemeIds.contains(targetPhoneme), isTrue, reason: '${unit.id} -> $targetPhoneme 不存在于音位数据中');
+        expect(
+          phonemeIds.contains(targetPhoneme),
+          isTrue,
+          reason: '${unit.id} -> $targetPhoneme 不存在于音位数据中',
+        );
       }
     }
 
@@ -54,7 +60,8 @@ void main() {
 
         for (final step in lesson.steps) {
           if (step.type == StepType.multipleChoice) {
-            final options = (step.metadata?['options'] as List<dynamic>? ?? const []);
+            final options =
+                (step.metadata?['options'] as List<dynamic>? ?? const []);
             final correct = step.metadata?['correct'] as int?;
 
             expect(options, isNotEmpty);
@@ -94,14 +101,18 @@ void main() {
         ),
         GoRoute(
           path: '/unit/:unitId',
-          builder: (context, state) => UnitDetailScreen(
-            unitId: state.pathParameters['unitId']!,
-          ),
+          builder: (context, state) =>
+              UnitDetailScreen(unitId: state.pathParameters['unitId']!),
         ),
       ],
     );
 
     expect(find.byType(TutorialMapScreen), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('unit-tile-u1')),
+      240,
+    );
+    await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('status-u1')), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('unit-tile-u1')));
@@ -120,6 +131,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('status-u11')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('unit-tile-u11')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(UnitDetailScreen), findsOneWidget);
+    expect(find.byKey(const ValueKey('upcoming-roadmap-u11')), findsOneWidget);
   });
 
   testWidgets('已开放单元详情页显示目标音位和真实课程列表', (tester) async {
@@ -130,9 +147,8 @@ void main() {
       routes: [
         GoRoute(
           path: '/unit/:unitId',
-          builder: (context, state) => UnitDetailScreen(
-            unitId: state.pathParameters['unitId']!,
-          ),
+          builder: (context, state) =>
+              UnitDetailScreen(unitId: state.pathParameters['unitId']!),
         ),
       ],
     );
@@ -152,9 +168,8 @@ void main() {
       routes: [
         GoRoute(
           path: '/lesson/:lessonId',
-          builder: (context, state) => LessonScreen(
-            lessonId: state.pathParameters['lessonId']!,
-          ),
+          builder: (context, state) =>
+              LessonScreen(lessonId: state.pathParameters['lessonId']!),
         ),
       ],
     );
@@ -168,7 +183,10 @@ void main() {
 
     await tester.tap(find.text('下一步'));
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('pair-u3_L2_s3-ship-sheep')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('pair-u3_L2_s3-ship-sheep')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('课程页可以渲染 multipleChoice 并显示解释', (tester) async {
@@ -179,9 +197,8 @@ void main() {
       routes: [
         GoRoute(
           path: '/lesson/:lessonId',
-          builder: (context, state) => LessonScreen(
-            lessonId: state.pathParameters['lessonId']!,
-          ),
+          builder: (context, state) =>
+              LessonScreen(lessonId: state.pathParameters['lessonId']!),
         ),
       ],
     );
@@ -191,13 +208,21 @@ void main() {
     await tester.tap(find.text('下一步'));
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.byKey(const ValueKey('mc-option-u2_L1_s3-1')));
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('mc-option-u2_L1_s3-1')),
+    );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const ValueKey('mc-option-u2_L1_s3-1')), warnIfMissed: false);
+    await tester.tap(
+      find.byKey(const ValueKey('mc-option-u2_L1_s3-1')),
+      warnIfMissed: false,
+    );
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const ValueKey('mc-explanation-u2_L1_s3')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('mc-explanation-u2_L1_s3')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('auth 页面在本地模式下会保留来源页返回能力', (tester) async {
@@ -208,9 +233,8 @@ void main() {
       routes: [
         GoRoute(
           path: '/auth',
-          builder: (context, state) => AuthScreen(
-            redirectTo: state.uri.queryParameters['from'],
-          ),
+          builder: (context, state) =>
+              AuthScreen(redirectTo: state.uri.queryParameters['from']),
         ),
         GoRoute(
           path: '/profile',
@@ -235,14 +259,20 @@ void main() {
         route: '/learn',
         size: const Size(390, 844),
         routes: [
-          GoRoute(path: '/learn', builder: (context, state) => const TutorialMapScreen()),
+          GoRoute(
+            path: '/learn',
+            builder: (context, state) => const TutorialMapScreen(),
+          ),
         ],
       ),
       (
         route: '/learn',
         size: const Size(1440, 900),
         routes: [
-          GoRoute(path: '/learn', builder: (context, state) => const TutorialMapScreen()),
+          GoRoute(
+            path: '/learn',
+            builder: (context, state) => const TutorialMapScreen(),
+          ),
         ],
       ),
       (
@@ -251,7 +281,8 @@ void main() {
         routes: [
           GoRoute(
             path: '/unit/:unitId',
-            builder: (context, state) => UnitDetailScreen(unitId: state.pathParameters['unitId']!),
+            builder: (context, state) =>
+                UnitDetailScreen(unitId: state.pathParameters['unitId']!),
           ),
         ],
       ),
@@ -261,7 +292,8 @@ void main() {
         routes: [
           GoRoute(
             path: '/unit/:unitId',
-            builder: (context, state) => UnitDetailScreen(unitId: state.pathParameters['unitId']!),
+            builder: (context, state) =>
+                UnitDetailScreen(unitId: state.pathParameters['unitId']!),
           ),
         ],
       ),
@@ -271,7 +303,8 @@ void main() {
         routes: [
           GoRoute(
             path: '/lesson/:lessonId',
-            builder: (context, state) => LessonScreen(lessonId: state.pathParameters['lessonId']!),
+            builder: (context, state) =>
+                LessonScreen(lessonId: state.pathParameters['lessonId']!),
           ),
         ],
       ),
@@ -281,7 +314,8 @@ void main() {
         routes: [
           GoRoute(
             path: '/lesson/:lessonId',
-            builder: (context, state) => LessonScreen(lessonId: state.pathParameters['lessonId']!),
+            builder: (context, state) =>
+                LessonScreen(lessonId: state.pathParameters['lessonId']!),
           ),
         ],
       ),
@@ -310,19 +344,15 @@ Future<void> _pumpRouter(
   addTearDown(() => tester.binding.setSurfaceSize(null));
   await tester.binding.setSurfaceSize(size);
 
-  final router = GoRouter(
-    initialLocation: initialLocation,
-    routes: routes,
-  );
+  final router = GoRouter(initialLocation: initialLocation, routes: routes);
 
   await tester.pumpWidget(
     ProviderScope(
       child: MaterialApp.router(
         theme: AppTheme.light,
         routerConfig: router,
-        builder: (context, child) => Material(
-          child: child ?? const SizedBox.shrink(),
-        ),
+        builder: (context, child) =>
+            Material(child: child ?? const SizedBox.shrink()),
       ),
     ),
   );
@@ -337,10 +367,6 @@ class _RouteMarker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Text('route:$label'),
-      ),
-    );
+    return Scaffold(body: Center(child: Text('route:$label')));
   }
 }
