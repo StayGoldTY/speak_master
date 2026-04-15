@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../widgets/record_button.dart';
+import '../../services/pronunciation_check_engine.dart';
+import '../tutorial/widgets/pronunciation_coach_panel.dart';
 
 class PracticeScreen extends StatefulWidget {
   const PracticeScreen({super.key});
@@ -183,6 +184,7 @@ class _PracticeScreenState extends State<PracticeScreen> with SingleTickerProvid
                   const SizedBox(height: 18),
                   TextField(
                     controller: _freeReadController,
+                    onChanged: (_) => setState(() {}),
                     minLines: 8,
                     maxLines: 12,
                     decoration: InputDecoration(
@@ -218,20 +220,39 @@ class _PracticeScreenState extends State<PracticeScreen> with SingleTickerProvid
             const SizedBox(height: 16),
             _Panel(
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  RecordButton(
-                    isRecording: _isFreeReadRecording,
-                    onTap: _toggleFreeReadRecording,
+                  const Text(
+                    '标准发音与自动检查',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    _isFreeReadRecording ? '录音中，先完整读完一遍再停。' : '点击开始一轮自由朗读。',
-                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '你刚输入的英文会被系统朗读成标准参考音，然后可直接跟读并查看识别版自动检查。',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                      height: 1.65,
+                    ),
+                  ),
+                  PronunciationCoachPanel(
+                    key: ValueKey(
+                      'practice-free-$_selectedStarterIndex-${_freeReadController.text.hashCode}',
+                    ),
+                    panelId: 'practice_free_$_selectedStarterIndex',
+                    referenceText: _freeReadController.text,
+                    accentColor: AppColors.primary,
+                    mode: PronunciationCoachMode.readAloud,
+                    title: '先听标准发音，再朗读你自己的文本',
+                    description:
+                        '这里会用系统 TTS 朗读你输入的英文，并用浏览器语音识别判断你有没有把主要词句读出来。',
+                    emptyReferenceText: '先在上面的输入框里填入英文文本，再开始标准发音与跟读。',
+                    onCheckCompleted: _handleFreeReadCheckCompleted,
                   ),
                   const SizedBox(height: 16),
                   const _HonestBanner(
-                    title: '当前版本不会做什么',
-                    body: '不会播放示范音频、不会生成 AI 分数、不会保存录音文件。它只提供诚实的自练入口和本次会话统计。',
+                    title: '当前版本不会假装完成什么',
+                    body: '现在会提供真实的标准发音播放和浏览器识别检查，但仍不会假装保存音频，也不会冒充声学发音评分。',
                   ),
                 ],
               ),
@@ -402,20 +423,16 @@ class _PracticeScreenState extends State<PracticeScreen> with SingleTickerProvid
                 ),
               ),
               const SizedBox(height: 22),
-              Center(
-                child: Column(
-                  children: [
-                    RecordButton(
-                      isRecording: _isFollowReadRecording,
-                      onTap: _toggleFollowReadRecording,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      _isFollowReadRecording ? '录音中，照着上面的重点读完整段。' : '点击开始一轮跟读自练。',
-                      style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                    ),
-                  ],
-                ),
+              PronunciationCoachPanel(
+                key: ValueKey('practice-follow-$_selectedMaterialIndex'),
+                panelId: 'practice_follow_$_selectedMaterialIndex',
+                referenceText: selected.excerpt,
+                accentColor: AppColors.secondary,
+                mode: PronunciationCoachMode.guidedRepeat,
+                title: '播放标准发音并完成这一段跟读',
+                description:
+                    '这段材料会先提供标准参考音，再根据你跟读后的识别结果提示哪些词还没稳定读出来。',
+                onCheckCompleted: _handleFollowReadCheckCompleted,
               ),
               const SizedBox(height: 18),
               Wrap(
@@ -598,6 +615,7 @@ class _PracticeScreenState extends State<PracticeScreen> with SingleTickerProvid
     });
   }
 
+  // ignore: unused_element
   void _toggleFreeReadRecording() {
     final finishedRound = _isFreeReadRecording;
     setState(() {
@@ -612,6 +630,7 @@ class _PracticeScreenState extends State<PracticeScreen> with SingleTickerProvid
     }
   }
 
+  // ignore: unused_element
   void _toggleFollowReadRecording() {
     final finishedRound = _isFollowReadRecording;
     setState(() {
@@ -633,6 +652,25 @@ class _PracticeScreenState extends State<PracticeScreen> with SingleTickerProvid
       _followReadRounds += 1;
     });
     _showMessage('这段材料已记为练完。下次可以换一段，或者回到教程主线继续推进。');
+  }
+
+  void _handleFreeReadCheckCompleted(PronunciationCheckResult result) {
+    setState(() {
+      _freeReadRounds += 1;
+    });
+    _showMessage(
+      '已记录 1 轮自由朗读，本轮识别覆盖 ${result.recognitionCoveragePercent}%。',
+    );
+  }
+
+  void _handleFollowReadCheckCompleted(PronunciationCheckResult result) {
+    setState(() {
+      _followReadRounds += 1;
+      _completedMaterials.add(_selectedMaterialIndex);
+    });
+    _showMessage(
+      '已完成 1 轮跟读，本轮识别覆盖 ${result.recognitionCoveragePercent}%。',
+    );
   }
 
   void _logTongueTwisterRound(int index, {required bool completed}) {

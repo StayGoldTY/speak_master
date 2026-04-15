@@ -15,10 +15,7 @@ import 'widgets/lesson_step_content.dart';
 class LessonScreen extends ConsumerStatefulWidget {
   final String lessonId;
 
-  const LessonScreen({
-    super.key,
-    required this.lessonId,
-  });
+  const LessonScreen({super.key, required this.lessonId});
 
   @override
   ConsumerState<LessonScreen> createState() => _LessonScreenState();
@@ -26,7 +23,6 @@ class LessonScreen extends ConsumerStatefulWidget {
 
 class _LessonScreenState extends ConsumerState<LessonScreen> {
   int _currentStep = 0;
-  bool _isRecording = false;
   final Map<String, int> _selectedOptions = {};
 
   @override
@@ -47,7 +43,9 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
     }
 
     final unit = UnitsData.units.firstWhere((item) => item.id == lesson.unitId);
-    final block = UnitsData.blocks.firstWhere((item) => item.id == unit.blockId);
+    final block = UnitsData.blocks.firstWhere(
+      (item) => item.id == unit.blockId,
+    );
     final currentStepIndex = math.min(
       math.max(_currentStep, 0),
       lesson.steps.length - 1,
@@ -63,14 +61,20 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
             padding: const EdgeInsets.only(right: 16),
             child: Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: block.color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
                   '${currentStepIndex + 1}/${lesson.steps.length}',
-                  style: TextStyle(color: block.color, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    color: block.color,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
@@ -102,10 +106,10 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
                                   lesson: lesson,
                                   currentStep: currentStep,
                                   accentColor: block.color,
-                                  isRecording: _isRecording,
-                                  selectedOption: _selectedOptions[currentStep.id],
-                                  onToggleRecording: _toggleRecording,
-                                  onSelectOption: (value) => _selectOption(currentStep.id, value),
+                                  selectedOption:
+                                      _selectedOptions[currentStep.id],
+                                  onSelectOption: (value) =>
+                                      _selectOption(currentStep.id, value),
                                 ),
                               ),
                               const SizedBox(width: 18),
@@ -125,10 +129,9 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
                             lesson: lesson,
                             currentStep: currentStep,
                             accentColor: block.color,
-                            isRecording: _isRecording,
                             selectedOption: _selectedOptions[currentStep.id],
-                            onToggleRecording: _toggleRecording,
-                            onSelectOption: (value) => _selectOption(currentStep.id, value),
+                            onSelectOption: (value) =>
+                                _selectOption(currentStep.id, value),
                             sidebar: _LessonSidebar(
                               unitTitle: unit.titleCn,
                               lesson: lesson,
@@ -153,10 +156,6 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
     );
   }
 
-  void _toggleRecording() {
-    setState(() => _isRecording = !_isRecording);
-  }
-
   void _selectOption(String stepId, int value) {
     setState(() {
       _selectedOptions[stepId] = value;
@@ -169,7 +168,6 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
     }
 
     setState(() {
-      _isRecording = false;
       _currentStep -= 1;
     });
   }
@@ -177,7 +175,6 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
   Future<void> _goNext(Lesson lesson) async {
     if (_currentStep < lesson.steps.length - 1) {
       setState(() {
-        _isRecording = false;
         _currentStep += 1;
       });
       return;
@@ -189,7 +186,9 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
     final progress = ref.read(progressProvider);
     final completedLessons = {...progress.completedLessons, lesson.id};
     final unitLessons = LessonsData.getLessonsForUnit(lesson.unitId);
-    final isUnitCompleted = unitLessons.every((item) => completedLessons.contains(item.id));
+    final isUnitCompleted = unitLessons.every(
+      (item) => completedLessons.contains(item.id),
+    );
 
     if (isUnitCompleted) {
       await progressNotifier.completeUnit(lesson.unitId);
@@ -235,10 +234,7 @@ class _LessonStateScreen extends StatelessWidget {
   final String title;
   final String body;
 
-  const _LessonStateScreen({
-    required this.title,
-    required this.body,
-  });
+  const _LessonStateScreen({required this.title, required this.body});
 
   @override
   Widget build(BuildContext context) {
@@ -258,7 +254,11 @@ class _LessonStateScreen extends StatelessWidget {
               ),
               child: Text(
                 body,
-                style: const TextStyle(fontSize: 15, color: AppColors.textSecondary, height: 1.8),
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: AppColors.textSecondary,
+                  height: 1.8,
+                ),
               ),
             ),
           ),
@@ -292,7 +292,9 @@ class _LessonProgressBar extends StatelessWidget {
               margin: const EdgeInsets.symmetric(horizontal: 3),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(999),
-                color: index <= currentStep ? color : color.withValues(alpha: 0.16),
+                color: index <= currentStep
+                    ? color
+                    : color.withValues(alpha: 0.16),
               ),
             ),
           ),
@@ -306,9 +308,7 @@ class _MainLessonPane extends StatelessWidget {
   final Lesson lesson;
   final LessonStep currentStep;
   final Color accentColor;
-  final bool isRecording;
   final int? selectedOption;
-  final VoidCallback onToggleRecording;
   final ValueChanged<int> onSelectOption;
   final Widget? sidebar;
 
@@ -316,9 +316,7 @@ class _MainLessonPane extends StatelessWidget {
     required this.lesson,
     required this.currentStep,
     required this.accentColor,
-    required this.isRecording,
     required this.selectedOption,
-    required this.onToggleRecording,
     required this.onSelectOption,
     this.sidebar,
   });
@@ -329,15 +327,9 @@ class _MainLessonPane extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _LessonHero(
-            lesson: lesson,
-            accentColor: accentColor,
-          ),
+          _LessonHero(lesson: lesson, accentColor: accentColor),
           const SizedBox(height: 16),
-          if (sidebar != null) ...[
-            sidebar!,
-            const SizedBox(height: 16),
-          ],
+          if (sidebar != null) ...[sidebar!, const SizedBox(height: 16)],
           _StepHeader(
             instruction: currentStep.instruction,
             stepType: currentStep.type,
@@ -346,8 +338,6 @@ class _MainLessonPane extends StatelessWidget {
           LessonStepContent(
             step: currentStep,
             accentColor: accentColor,
-            isRecording: isRecording,
-            onToggleRecording: onToggleRecording,
             selectedOption: selectedOption,
             onSelectOption: onSelectOption,
           ),
@@ -361,10 +351,7 @@ class _LessonHero extends StatelessWidget {
   final Lesson lesson;
   final Color accentColor;
 
-  const _LessonHero({
-    required this.lesson,
-    required this.accentColor,
-  });
+  const _LessonHero({required this.lesson, required this.accentColor});
 
   @override
   Widget build(BuildContext context) {
@@ -381,12 +368,20 @@ class _LessonHero extends StatelessWidget {
         children: [
           Text(
             lesson.titleEn,
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: accentColor),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: accentColor,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             lesson.description,
-            style: const TextStyle(fontSize: 15, color: AppColors.textPrimary, height: 1.6),
+            style: const TextStyle(
+              fontSize: 15,
+              color: AppColors.textPrimary,
+              height: 1.6,
+            ),
           ),
           const SizedBox(height: 14),
           Wrap(
@@ -429,10 +424,7 @@ class _StepHeader extends StatelessWidget {
   final String instruction;
   final StepType stepType;
 
-  const _StepHeader({
-    required this.instruction,
-    required this.stepType,
-  });
+  const _StepHeader({required this.instruction, required this.stepType});
 
   @override
   Widget build(BuildContext context) {
@@ -441,7 +433,11 @@ class _StepHeader extends StatelessWidget {
       children: [
         Text(
           instruction,
-          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary,
+          ),
         ),
         const SizedBox(height: 6),
         Text(
@@ -487,7 +483,11 @@ class _LessonSidebar extends StatelessWidget {
             children: [
               Text(
                 unitTitle,
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: accentColor),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: accentColor,
+                ),
               ),
               const SizedBox(height: 8),
               const Text(
@@ -504,7 +504,9 @@ class _LessonSidebar extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: isCurrent ? accentColor.withValues(alpha: 0.08) : AppColors.bgLight,
+                      color: isCurrent
+                          ? accentColor.withValues(alpha: 0.08)
+                          : AppColors.bgLight,
                       borderRadius: BorderRadius.circular(18),
                     ),
                     child: Row(
@@ -521,7 +523,9 @@ class _LessonSidebar extends StatelessWidget {
                             child: Text(
                               '${index + 1}',
                               style: TextStyle(
-                                color: isCurrent ? Colors.white : AppColors.textSecondary,
+                                color: isCurrent
+                                    ? Colors.white
+                                    : AppColors.textSecondary,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -534,12 +538,18 @@ class _LessonSidebar extends StatelessWidget {
                             children: [
                               Text(
                                 step.instruction,
-                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                               const SizedBox(height: 4),
                               Text(
                                 _stepTypeLabel(step.type),
-                                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                ),
                               ),
                             ],
                           ),
@@ -552,7 +562,8 @@ class _LessonSidebar extends StatelessWidget {
             ],
           ),
         ),
-        if (lesson.didYouKnowText != null && lesson.didYouKnowSource != null) ...[
+        if (lesson.didYouKnowText != null &&
+            lesson.didYouKnowSource != null) ...[
           const SizedBox(height: 16),
           DidYouKnowCard(
             text: lesson.didYouKnowText!,

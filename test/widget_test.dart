@@ -9,9 +9,12 @@ import 'package:speak_master/data/phonemes_data.dart';
 import 'package:speak_master/data/units_data.dart';
 import 'package:speak_master/models/lesson.dart';
 import 'package:speak_master/screens/auth/auth_screen.dart';
+import 'package:speak_master/screens/assessment/assessment_screen.dart';
+import 'package:speak_master/screens/practice/practice_screen.dart';
 import 'package:speak_master/screens/tutorial/lesson_screen.dart';
 import 'package:speak_master/screens/tutorial/tutorial_map_screen.dart';
 import 'package:speak_master/screens/tutorial/unit_detail_screen.dart';
+import 'package:speak_master/services/pronunciation_check_engine.dart';
 import 'package:speak_master/widgets/phoneme_card.dart';
 import 'package:speak_master/widgets/record_button.dart';
 
@@ -87,6 +90,30 @@ void main() {
     expect(LessonsData.isReleasedUnit('u12'), isFalse);
     expect(LessonsData.hasAuthoredLessons('u12'), isTrue);
     expect(LessonsData.getAuthoredLessonCount('u10'), 3);
+  });
+
+  test('发音检查引擎会提取可跟读脚本并返回缺失重点词', () {
+    const step = LessonStep(
+      id: 'demo_step',
+      type: StepType.recordAndCompare,
+      instruction: '说：最小对立体跟读',
+      metadata: {
+        'pairs': ['fan|van', 'sip|zip', 'ten|den'],
+      },
+    );
+
+    final referenceText = PronunciationCheckEngine.buildReferenceText(step);
+    final result = PronunciationCheckEngine.analyze(
+      step: step,
+      transcript: 'fan zip',
+    );
+
+    expect(referenceText, contains('fan'));
+    expect(referenceText, contains('van'));
+    expect(result.matchedFocusWords, contains('fan'));
+    expect(result.matchedFocusWords, contains('zip'));
+    expect(result.missingFocusWords, contains('van'));
+    expect(result.transcript, 'fan zip');
   });
 
   testWidgets('教程地图允许进入已开放单元，并把后续单元标记为即将开放', (tester) async {
@@ -251,6 +278,59 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('route:profile'), findsOneWidget);
+  });
+
+  testWidgets('practice 页面会为自由朗读和跟读材料提供标准发音脚本', (tester) async {
+    await _pumpRouter(
+      tester,
+      initialLocation: '/practice',
+      size: const Size(1440, 900),
+      routes: [
+        GoRoute(
+          path: '/practice',
+          builder: (context, state) => const PracticeScreen(),
+        ),
+      ],
+    );
+
+    expect(find.byType(PracticeScreen), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('speech-reference-practice_free_0')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('跟读参考'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('speech-reference-practice_follow_0')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('assessment 页面会渲染标准发音和识别检查入口', (tester) async {
+    await _pumpRouter(
+      tester,
+      initialLocation: '/assessment',
+      size: const Size(390, 844),
+      routes: [
+        GoRoute(
+          path: '/assessment',
+          builder: (context, state) => const AssessmentScreen(),
+        ),
+        GoRoute(
+          path: '/practice',
+          builder: (context, state) => const PracticeScreen(),
+        ),
+      ],
+    );
+
+    expect(find.byType(AssessmentScreen), findsOneWidget);
+    expect(find.text('这里是识别检查 + 引导式自评'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('speech-reference-assessment_assessment_1')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('教程主链页面在手机和桌面宽度下都能渲染', (tester) async {

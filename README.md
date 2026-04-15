@@ -29,6 +29,10 @@
   - `recordAndCompare`
   - `audio`
   - `readAloud`
+- lesson 中的 `audio` / `recordAndCompare` / `readAloud` 现已接入：
+  - 真实标准发音播放：基于 `flutter_tts`
+  - 浏览器语音识别检查：基于 `speech_to_text`
+  - 识别覆盖与重点词反馈：基于 `PronunciationCheckEngine`
 - `u11-u32` 当前不会假装成已上线课程，但现在都可以点进单元详情查看：
   - 将学什么
   - 常见误区
@@ -52,7 +56,8 @@
   - 自由朗读
   - 跟读参考材料
   - 绕口令挑战
-- `Assessment` 支持引导式自评，并将结果回写到进度系统
+- `Practice` 中的自由朗读 / 跟读参考材料已接入标准发音播放与识别版自动检查
+- `Assessment` 现已支持标准发音播放 + 识别检查 + 引导式自评，并将结果回写到进度系统
 - `progress_provider.dart` 已避免重复刷 XP，并支持 `completeAssessment`
 
 ### 4. 账号功能
@@ -101,9 +106,9 @@
 
 因此目前：
 
-- `audio` 步骤不会冒充已有标准音频播放
-- `recordAndCompare` 是诚实的自练入口，不会假装保存并回放录音
-- `assessment` 是引导式自评，不是假装 AI 自动发音评分
+- `audio` / `recordAndCompare` / `readAloud` 已经有真实标准发音播放，但当前参考音来自系统 TTS，不冒充真人录音素材
+- 自动检查基于浏览器语音识别，只会诚实告诉你“有没有把目标词句读出来”
+- `assessment` 现在结合识别检查与引导式自评，但依然不是声学口音自动评分
 
 ## 本地运行
 
@@ -149,6 +154,7 @@ flutter build web --release --base-href /speak_master/
 - 教程地图已开放 / 预告单元的关键入口
 - 已开放单元详情页与真实课程列表
 - lesson 中 `multipleChoice` / `minimalPairQuiz` / `recordAndCompare` 关键步骤
+- practice / assessment 中标准发音脚本入口的稳定渲染
 - auth 页面来源页返回能力
 - 教程主链页面在手机和桌面宽度下的稳定渲染
 

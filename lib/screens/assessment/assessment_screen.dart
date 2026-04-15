@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../providers/progress_provider.dart';
-import '../../widgets/record_button.dart';
+import '../tutorial/widgets/pronunciation_coach_panel.dart';
 
 const _assessmentPrompts = [
   _AssessmentPrompt(
@@ -111,8 +111,8 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const _InfoBanner(
-                      title: '这不是 AI 自动评分',
-                      body: '当前版本是“引导式自评”。你先读，再根据提示给自己打分。这样虽然不花哨，但至少诚实、可执行。',
+                      title: '这里是识别检查 + 引导式自评',
+                      body: '你可以先听标准发音并完成浏览器识别检查，再根据提示给自己打分。当前仍不是声学自动评分，所以结果会明确区分“识别反馈”和“自评分数”。',
                     ),
                     const SizedBox(height: 16),
                     Container(
@@ -182,23 +182,15 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen> {
                         borderRadius: BorderRadius.circular(22),
                         border: Border.all(color: Colors.grey.shade200),
                       ),
-                      child: Column(
-                        children: [
-                          RecordButton(
-                            isRecording: _isRecording,
-                            onTap: _toggleRecording,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            _isRecording ? '录音中，先完整读一遍，再停下来做自评。' : '点击开始一轮朗读。',
-                            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                          ),
-                          const SizedBox(height: 14),
-                          const _InfoBanner(
-                            title: '当前不会做什么',
-                            body: '不会自动给你播放回放，也不会给出看起来很厉害但其实不可靠的分数。你可以专注在“这次有没有比上次更清楚”。',
-                          ),
-                        ],
+                      child: PronunciationCoachPanel(
+                        key: ValueKey('assessment-coach-${prompt.id}'),
+                        panelId: 'assessment_${prompt.id}',
+                        referenceText: prompt.sentence,
+                        accentColor: AppColors.primary,
+                        mode: PronunciationCoachMode.readAloud,
+                        title: '先听标准发音，再完成这一句朗读',
+                        description:
+                            '这里会先播放系统标准发音，再用浏览器语音识别检查你是否把整句和重点词读出来。',
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -439,6 +431,7 @@ class _AssessmentScreenState extends ConsumerState<AssessmentScreen> {
     );
   }
 
+  // ignore: unused_element
   void _toggleRecording() {
     final justFinished = _isRecording;
     setState(() {
