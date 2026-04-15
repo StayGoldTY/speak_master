@@ -1,0 +1,89 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.41.6
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Run widget tests
+        run: flutter test test/widget_test.dart
+
+      - name: Compute base href
+        id: base_href
+        shell: bash
+        run: |
+          set -euo pipefail
+          repository_name="${GITHUB_REPOSITORY#*/}"
+          repository_full="${GITHUB_REPOSITORY,,}"
+
+          if [[ "${repository_full}" == "staygoldty/staygoldty.github.io" ]]; then
+            echo "value=/" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=/${repository_name}/" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build web
+        shell: bash
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+          args=(build web --release --base-href "${{ steps.base_href.outputs.value }}")
+
+          if [[ -n "${SUPABASE_URL}" && -n "${SUPABASE_ANON_KEY}" ]]; then
+            args+=(--dart-define=SUPABASE_URL="${SUPABASE_URL}")
+            args+=(--dart-define=SUPABASE_ANON_KEY="${SUPABASE_ANON_KEY}")
+          fi
+
+          flutter "${args[@]}"
+          cp build/web/index.html build/web/404.html
+          touch build/web/.nojekyll
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

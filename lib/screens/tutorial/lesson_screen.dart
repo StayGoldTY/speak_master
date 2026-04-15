@@ -1,331 +1,603 @@
-import 'package:flutter/material.dart';
-import '../../core/theme/app_colors.dart';
-import '../../widgets/did_you_know_card.dart';
-import '../../widgets/record_button.dart';
+import 'dart:math' as math;
 
-class LessonScreen extends StatefulWidget {
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../core/theme/app_colors.dart';
+import '../../data/lessons_data.dart';
+import '../../data/units_data.dart';
+import '../../models/lesson.dart';
+import '../../providers/progress_provider.dart';
+import '../../widgets/did_you_know_card.dart';
+import 'widgets/lesson_step_content.dart';
+
+class LessonScreen extends ConsumerStatefulWidget {
   final String lessonId;
-  const LessonScreen({super.key, required this.lessonId});
+
+  const LessonScreen({
+    super.key,
+    required this.lessonId,
+  });
 
   @override
-  State<LessonScreen> createState() => _LessonScreenState();
+  ConsumerState<LessonScreen> createState() => _LessonScreenState();
 }
 
-class _LessonScreenState extends State<LessonScreen> {
+class _LessonScreenState extends ConsumerState<LessonScreen> {
   int _currentStep = 0;
   bool _isRecording = false;
-  double? _score;
-
-  static const _steps = [
-    _LessonStepData('看：发音原理', '观察口腔动画，了解发声位置', Icons.visibility),
-    _LessonStepData('听：标准发音', '聆听标准发音，注意细节', Icons.headphones),
-    _LessonStepData('说：跟读练习', '录音并与标准发音对比', Icons.mic),
-    _LessonStepData('辨：听辨测试', '选择你听到的正确发音', Icons.quiz),
-    _LessonStepData('玩：趣味闯关', '完成游戏化练习', Icons.games),
-  ];
+  final Map<String, int> _selectedOptions = {};
 
   @override
   Widget build(BuildContext context) {
+    final lesson = LessonsData.getLessonById(widget.lessonId);
+    if (lesson == null) {
+      return const _LessonStateScreen(
+        title: '课程未找到',
+        body: '当前链接没有对应的课程内容。你可以先返回教程地图，从已开放单元重新进入。',
+      );
+    }
+
+    if (!LessonsData.isReleasedUnit(lesson.unitId)) {
+      return const _LessonStateScreen(
+        title: '课程暂未开放',
+        body: '这个课程所在的单元还没有进入第一阶段主学习链路，因此暂时不对外开放。',
+      );
+    }
+
+    final unit = UnitsData.units.firstWhere((item) => item.id == lesson.unitId);
+    final block = UnitsData.blocks.firstWhere((item) => item.id == unit.blockId);
+    final currentStepIndex = math.min(
+      math.max(_currentStep, 0),
+      lesson.steps.length - 1,
+    );
+    final currentStep = lesson.steps[currentStepIndex];
+    final isWide = MediaQuery.sizeOf(context).width >= 1100;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('课程 ${widget.lessonId.split('_').last}'),
+        title: Text(lesson.titleCn),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Center(
-              child: Text(
-                '${_currentStep + 1}/${_steps.length}',
-                style: const TextStyle(fontWeight: FontWeight.w600),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: block.color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '${currentStepIndex + 1}/${lesson.steps.length}',
+                  style: TextStyle(color: block.color, fontWeight: FontWeight.w700),
+                ),
               ),
             ),
           ),
         ],
       ),
-      body: Column(
-        children: [
-          _buildProgressBar(),
-          Expanded(child: _buildStepContent()),
-          _buildBottomBar(),
+      body: SafeArea(
+        child: Column(
+          children: [
+            _LessonProgressBar(
+              currentStep: currentStepIndex,
+              totalSteps: lesson.steps.length,
+              color: block.color,
+            ),
+            Expanded(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1240),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+                    child: isWide
+                        ? Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                flex: 7,
+                                child: _MainLessonPane(
+                                  lesson: lesson,
+                                  currentStep: currentStep,
+                                  accentColor: block.color,
+                                  isRecording: _isRecording,
+                                  selectedOption: _selectedOptions[currentStep.id],
+                                  onToggleRecording: _toggleRecording,
+                                  onSelectOption: (value) => _selectOption(currentStep.id, value),
+                                ),
+                              ),
+                              const SizedBox(width: 18),
+                              Expanded(
+                                flex: 4,
+                                child: _LessonSidebar(
+                                  unitTitle: unit.titleCn,
+                                  lesson: lesson,
+                                  steps: lesson.steps,
+                                  currentStepIndex: currentStepIndex,
+                                  accentColor: block.color,
+                                ),
+                              ),
+                            ],
+                          )
+                        : _MainLessonPane(
+                            lesson: lesson,
+                            currentStep: currentStep,
+                            accentColor: block.color,
+                            isRecording: _isRecording,
+                            selectedOption: _selectedOptions[currentStep.id],
+                            onToggleRecording: _toggleRecording,
+                            onSelectOption: (value) => _selectOption(currentStep.id, value),
+                            sidebar: _LessonSidebar(
+                              unitTitle: unit.titleCn,
+                              lesson: lesson,
+                              steps: lesson.steps,
+                              currentStepIndex: currentStepIndex,
+                              accentColor: block.color,
+                            ),
+                          ),
+                  ),
+                ),
+              ),
+            ),
+            _BottomBar(
+              canGoBack: currentStepIndex > 0,
+              onPrevious: _goPrevious,
+              onNext: () => _goNext(lesson),
+              isLastStep: currentStepIndex == lesson.steps.length - 1,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _toggleRecording() {
+    setState(() => _isRecording = !_isRecording);
+  }
+
+  void _selectOption(String stepId, int value) {
+    setState(() {
+      _selectedOptions[stepId] = value;
+    });
+  }
+
+  void _goPrevious() {
+    if (_currentStep == 0) {
+      return;
+    }
+
+    setState(() {
+      _isRecording = false;
+      _currentStep -= 1;
+    });
+  }
+
+  Future<void> _goNext(Lesson lesson) async {
+    if (_currentStep < lesson.steps.length - 1) {
+      setState(() {
+        _isRecording = false;
+        _currentStep += 1;
+      });
+      return;
+    }
+
+    final progressNotifier = ref.read(progressProvider.notifier);
+    await progressNotifier.completeLesson(lesson.id);
+
+    final progress = ref.read(progressProvider);
+    final completedLessons = {...progress.completedLessons, lesson.id};
+    final unitLessons = LessonsData.getLessonsForUnit(lesson.unitId);
+    final isUnitCompleted = unitLessons.every((item) => completedLessons.contains(item.id));
+
+    if (isUnitCompleted) {
+      await progressNotifier.completeUnit(lesson.unitId);
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text('课程完成'),
+        content: Text(
+          isUnitCompleted
+              ? '这一课已经完成，你也顺利走完了本单元。现在可以返回单元页，继续下一段学习。'
+              : '这一课已经完成。建议回到单元页，按顺序继续下一课。',
+          style: const TextStyle(height: 1.7),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              setState(() => _currentStep = 0);
+            },
+            child: const Text('再看一遍'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              context.pop();
+            },
+            child: const Text('返回单元'),
+          ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildProgressBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      child: Row(
-        children: List.generate(_steps.length, (index) {
-          return Expanded(
+class _LessonStateScreen extends StatelessWidget {
+  final String title;
+  final String body;
+
+  const _LessonStateScreen({
+    required this.title,
+    required this.body,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 620),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
             child: Container(
-              height: 4,
-              margin: const EdgeInsets.symmetric(horizontal: 2),
+              padding: const EdgeInsets.all(28),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(2),
-                color: index <= _currentStep
-                    ? AppColors.primary
-                    : AppColors.primary.withValues(alpha: 0.15),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Text(
+                body,
+                style: const TextStyle(fontSize: 15, color: AppColors.textSecondary, height: 1.8),
               ),
             ),
-          );
-        }),
+          ),
+        ),
       ),
     );
   }
+}
 
-  Widget _buildStepContent() {
-    final step = _steps[_currentStep];
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(20),
+class _LessonProgressBar extends StatelessWidget {
+  final int currentStep;
+  final int totalSteps;
+  final Color color;
+
+  const _LessonProgressBar({
+    required this.currentStep,
+    required this.totalSteps,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      child: Row(
+        children: List.generate(
+          totalSteps,
+          (index) => Expanded(
+            child: Container(
+              height: 5,
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(999),
+                color: index <= currentStep ? color : color.withValues(alpha: 0.16),
+              ),
             ),
-            child: Icon(step.icon, color: AppColors.primary, size: 40),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MainLessonPane extends StatelessWidget {
+  final Lesson lesson;
+  final LessonStep currentStep;
+  final Color accentColor;
+  final bool isRecording;
+  final int? selectedOption;
+  final VoidCallback onToggleRecording;
+  final ValueChanged<int> onSelectOption;
+  final Widget? sidebar;
+
+  const _MainLessonPane({
+    required this.lesson,
+    required this.currentStep,
+    required this.accentColor,
+    required this.isRecording,
+    required this.selectedOption,
+    required this.onToggleRecording,
+    required this.onSelectOption,
+    this.sidebar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _LessonHero(
+            lesson: lesson,
+            accentColor: accentColor,
           ),
           const SizedBox(height: 16),
+          if (sidebar != null) ...[
+            sidebar!,
+            const SizedBox(height: 16),
+          ],
+          _StepHeader(
+            instruction: currentStep.instruction,
+            stepType: currentStep.type,
+          ),
+          const SizedBox(height: 14),
+          LessonStepContent(
+            step: currentStep,
+            accentColor: accentColor,
+            isRecording: isRecording,
+            onToggleRecording: onToggleRecording,
+            selectedOption: selectedOption,
+            onSelectOption: onSelectOption,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LessonHero extends StatelessWidget {
+  final Lesson lesson;
+  final Color accentColor;
+
+  const _LessonHero({
+    required this.lesson,
+    required this.accentColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: accentColor.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           Text(
-            step.title,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+            lesson.titleEn,
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: accentColor),
           ),
           const SizedBox(height: 8),
           Text(
-            step.subtitle,
-            style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
-            textAlign: TextAlign.center,
+            lesson.description,
+            style: const TextStyle(fontSize: 15, color: AppColors.textPrimary, height: 1.6),
           ),
-          const SizedBox(height: 32),
-          if (_currentStep == 0) _buildTheoryContent(),
-          if (_currentStep == 1) _buildListenContent(),
-          if (_currentStep == 2) _buildPracticeContent(),
-          if (_currentStep == 3) _buildQuizContent(),
-          if (_currentStep == 4) _buildGameContent(),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _MetaPill(label: '${lesson.estimatedMinutes} 分钟'),
+              _MetaPill(label: '${lesson.steps.length} 个步骤'),
+              _MetaPill(label: _lessonTypeLabel(lesson.type)),
+            ],
+          ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildTheoryContent() {
+class _MetaPill extends StatelessWidget {
+  final String label;
+
+  const _MetaPill({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.bgLight,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+      ),
+    );
+  }
+}
+
+class _StepHeader extends StatelessWidget {
+  final String instruction;
+  final StepType stepType;
+
+  const _StepHeader({
+    required this.instruction,
+    required this.stepType,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          instruction,
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          _stepTypeLabel(stepType),
+          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+        ),
+      ],
+    );
+  }
+}
+
+class _LessonSidebar extends StatelessWidget {
+  final String unitTitle;
+  final Lesson lesson;
+  final List<LessonStep> steps;
+  final int currentStepIndex;
+  final Color accentColor;
+
+  const _LessonSidebar({
+    required this.unitTitle,
+    required this.lesson,
+    required this.steps,
+    required this.currentStepIndex,
+    required this.accentColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      key: const ValueKey('lesson-sidebar'),
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
           width: double.infinity,
-          height: 200,
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
-          ),
-          child: const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.face, size: 64, color: AppColors.primary),
-                SizedBox(height: 12),
-                Text('口腔动画区域', style: TextStyle(color: AppColors.textSecondary)),
-                Text('舌位·唇形·气流可视化', style: TextStyle(color: AppColors.textHint, fontSize: 12)),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.grey.shade200),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: accentColor.withValues(alpha: 0.18)),
           ),
-          child: const Column(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('发音要点', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-              SizedBox(height: 8),
               Text(
-                '舌尖轻轻伸出上下齿之间，气流从舌面和上齿间的缝隙中挤出。声带不振动（清音）。',
-                style: TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.6),
+                unitTitle,
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: accentColor),
               ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        const DidYouKnowCard(
-          text: '英语的 /θ/ 音在全世界的语言中其实很少见！只有约 4% 的语言有这个音。这也是为什么它对大多数非英语母语者来说都很难。',
-          source: 'Maddieson (1984), Patterns of Sounds',
-        ),
-      ],
-    );
-  }
-
-  Widget _buildListenContent() {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(32),
-          decoration: BoxDecoration(
-            color: AppColors.suprasegmentalColor.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            children: [
+              const SizedBox(height: 8),
               const Text(
-                'think',
-                style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                '本课步骤',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
               ),
-              const SizedBox(height: 4),
-              const Text('/θɪŋk/', style: TextStyle(fontSize: 18, color: AppColors.primary)),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _SpeedButton(label: '0.5x', isSelected: false),
-                  const SizedBox(width: 8),
-                  FloatingActionButton(
-                    onPressed: () {},
-                    backgroundColor: AppColors.primary,
-                    child: const Icon(Icons.play_arrow, color: Colors.white, size: 32),
+              const SizedBox(height: 14),
+              ...List.generate(steps.length, (index) {
+                final step = steps[index];
+                final isCurrent = index == currentStepIndex;
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: isCurrent ? accentColor.withValues(alpha: 0.08) : AppColors.bgLight,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: isCurrent ? accentColor : Colors.white,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${index + 1}',
+                              style: TextStyle(
+                                color: isCurrent ? Colors.white : AppColors.textSecondary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                step.instruction,
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _stepTypeLabel(step.type),
+                                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(width: 8),
-                  _SpeedButton(label: '1.0x', isSelected: true),
-                ],
-              ),
+                );
+              }),
             ],
           ),
         ),
-        const SizedBox(height: 16),
-        const Row(
-          children: [
-            _AccentChip(label: '美式', isSelected: true),
-            SizedBox(width: 8),
-            _AccentChip(label: '英式', isSelected: false),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPracticeContent() {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.shade200),
-          ),
-          child: Column(
-            children: [
-              const Text(
-                'Thirty-three thin thieves thought.',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, height: 1.5),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              Container(
-                width: double.infinity,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: AppColors.bgLight,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Center(
-                  child: Text('波形对比区域', style: TextStyle(color: AppColors.textHint)),
-                ),
-              ),
-              const SizedBox(height: 24),
-              RecordButton(
-                isRecording: _isRecording,
-                onTap: () => setState(() => _isRecording = !_isRecording),
-              ),
-              if (_score != null) ...[
-                const SizedBox(height: 16),
-                _ScoreDisplay(score: _score!),
-              ],
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildQuizContent() {
-    return Column(
-      children: [
-        const Text('你听到的是哪个？', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
-        IconButton(
-          onPressed: () {},
-          icon: const Icon(Icons.volume_up, size: 40, color: AppColors.primary),
-        ),
-        const SizedBox(height: 20),
-        Row(
-          children: [
-            Expanded(child: _QuizOption(label: 'think /θɪŋk/', onTap: () {})),
-            const SizedBox(width: 12),
-            Expanded(child: _QuizOption(label: 'sink /sɪŋk/', onTap: () {})),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildGameContent() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AppColors.xpGold.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.xpGold.withValues(alpha: 0.2)),
-      ),
-      child: const Column(
-        children: [
-          Icon(Icons.emoji_events, size: 64, color: AppColors.xpGold),
-          SizedBox(height: 16),
-          Text('绕口令闯关', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          SizedBox(height: 8),
-          Text(
-            '大声朗读绕口令，AI 为你的发音评分！',
-            style: TextStyle(color: AppColors.textSecondary),
-            textAlign: TextAlign.center,
+        if (lesson.didYouKnowText != null && lesson.didYouKnowSource != null) ...[
+          const SizedBox(height: 16),
+          DidYouKnowCard(
+            text: lesson.didYouKnowText!,
+            source: lesson.didYouKnowSource!,
           ),
         ],
-      ),
+      ],
     );
   }
+}
 
-  Widget _buildBottomBar() {
+class _BottomBar extends StatelessWidget {
+  final bool canGoBack;
+  final VoidCallback onPrevious;
+  final VoidCallback onNext;
+  final bool isLastStep;
+
+  const _BottomBar({
+    required this.canGoBack,
+    required this.onPrevious,
+    required this.onNext,
+    required this.isLastStep,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return SafeArea(
+      top: false,
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
         child: Row(
           children: [
-            if (_currentStep > 0)
+            if (canGoBack)
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () => setState(() => _currentStep--),
+                  onPressed: onPrevious,
                   child: const Text('上一步'),
                 ),
               ),
-            if (_currentStep > 0) const SizedBox(width: 12),
+            if (canGoBack) const SizedBox(width: 12),
             Expanded(
               flex: 2,
               child: ElevatedButton(
-                onPressed: () {
-                  if (_currentStep < _steps.length - 1) {
-                    setState(() => _currentStep++);
-                  } else {
-                    _showCompletionDialog();
-                  }
-                },
-                child: Text(_currentStep < _steps.length - 1 ? '下一步' : '完成课程'),
+                onPressed: onNext,
+                child: Text(isLastStep ? '完成课程' : '下一步'),
               ),
             ),
           ],
@@ -333,122 +605,27 @@ class _LessonScreenState extends State<LessonScreen> {
       ),
     );
   }
-
-  void _showCompletionDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('🎉', style: TextStyle(fontSize: 48)),
-            const SizedBox(height: 12),
-            const Text('课程完成！', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.xpGold.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Text('+10 XP', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.accentOrange)),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).pop();
-              },
-              child: const Text('返回'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
-class _LessonStepData {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  const _LessonStepData(this.title, this.subtitle, this.icon);
+String _lessonTypeLabel(LessonType type) {
+  return switch (type) {
+    LessonType.theory => '概念讲解',
+    LessonType.listen => '听音训练',
+    LessonType.practice => '开口练习',
+    LessonType.discrimination => '辨音训练',
+    LessonType.game => '闯关练习',
+  };
 }
 
-class _SpeedButton extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  const _SpeedButton({required this.label, required this.isSelected});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: isSelected ? AppColors.primary.withValues(alpha: 0.1) : Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(label, style: TextStyle(color: isSelected ? AppColors.primary : AppColors.textHint, fontSize: 13)),
-    );
-  }
-}
-
-class _AccentChip extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  const _AccentChip({required this.label, required this.isSelected});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: isSelected ? AppColors.primary : AppColors.primary.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(label, style: TextStyle(color: isSelected ? Colors.white : AppColors.primary, fontSize: 13)),
-    );
-  }
-}
-
-class _QuizOption extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
-  const _QuizOption({required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey.shade200),
-        ),
-        child: Center(child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15))),
-      ),
-    );
-  }
-}
-
-class _ScoreDisplay extends StatelessWidget {
-  final double score;
-  const _ScoreDisplay({required this.score});
-
-  @override
-  Widget build(BuildContext context) {
-    final color = score >= 80 ? AppColors.successGreen : score >= 60 ? AppColors.accentOrange : AppColors.errorRed;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text('发音评分：${score.toInt()}分', style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16)),
-    );
-  }
+String _stepTypeLabel(StepType type) {
+  return switch (type) {
+    StepType.text => '阅读讲解',
+    StepType.animation => '动态演示',
+    StepType.audio => '听音准备',
+    StepType.recordAndCompare => '录音自练',
+    StepType.minimalPairQuiz => '最小对立体',
+    StepType.dragAndDrop => '拖拽练习',
+    StepType.multipleChoice => '选择题',
+    StepType.readAloud => '朗读练习',
+  };
 }

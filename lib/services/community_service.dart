@@ -47,11 +47,13 @@ class CommunityService {
     }
   }
 
-  Future<void> deletePost(String postId) async {
+  Future<bool> deletePost(String postId) async {
     try {
       await _client.from('posts').delete().eq('id', postId);
+      return true;
     } catch (e) {
       debugPrint('Failed to delete post: $e');
+      return false;
     }
   }
 
@@ -136,11 +138,13 @@ class CommunityService {
     }
   }
 
-  Future<void> deleteComment(String commentId) async {
+  Future<bool> deleteComment(String commentId) async {
     try {
       await _client.from('comments').delete().eq('id', commentId);
+      return true;
     } catch (e) {
       debugPrint('Failed to delete comment: $e');
+      return false;
     }
   }
 

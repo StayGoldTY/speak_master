@@ -22,6 +22,10 @@ class ProgressNotifier extends StateNotifier<UserProgress> {
   Future<void> reload() async => _loadInitial();
 
   Future<void> completeLesson(String lessonId) async {
+    if (state.completedLessons.contains(lessonId)) {
+      return;
+    }
+
     final syncService = _ref.read(progressSyncServiceProvider);
     final gamService = _ref.read(gamificationServiceProvider);
 
@@ -72,6 +76,29 @@ class ProgressNotifier extends StateNotifier<UserProgress> {
     final updated = state.copyWith(
       phonemeScores: {...state.phonemeScores, phonemeId: score},
     );
+    state = updated;
+    await syncService.saveProgress(updated);
+  }
+
+  Future<void> completeAssessment({
+    int xp = 20,
+    Map<String, double> phonemeUpdates = const {},
+  }) async {
+    final syncService = _ref.read(progressSyncServiceProvider);
+    final gamService = _ref.read(gamificationServiceProvider);
+
+    var updated = state.copyWith(
+      todayAssessmentCount: state.todayAssessmentCount + 1,
+      phonemeScores: {
+        ...state.phonemeScores,
+        ...phonemeUpdates,
+      },
+    );
+
+    updated = gamService.addXp(updated, xp);
+    updated = gamService.updateStreak(updated);
+    updated = gamService.checkBadges(updated);
+
     state = updated;
     await syncService.saveProgress(updated);
   }

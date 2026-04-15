@@ -94,8 +94,8 @@ class AuthService {
 
     final updates = <String, dynamic>{};
     if (displayName != null) updates['display_name'] = displayName;
-    if (username != null) updates['username'] = username;
-    if (avatarUrl != null) updates['avatar_url'] = avatarUrl;
+    if (username != null) updates['username'] = username.trim().isEmpty ? null : username.trim();
+    if (avatarUrl != null) updates['avatar_url'] = avatarUrl.trim().isEmpty ? null : avatarUrl.trim();
     if (accentPreference != null) updates['accent_preference'] = accentPreference;
 
     if (updates.isNotEmpty) {

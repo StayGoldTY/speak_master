@@ -1,8 +1,8 @@
 class AppConstants {
   AppConstants._();
 
-  static const appName = '声临其境';
-  static const appNameEn = 'SpeakMaster';
+  static const appName = 'Speak Master';
+  static const appNameEn = 'Speak Master';
 
   static const supabaseUrl = 'YOUR_SUPABASE_URL';
   static const supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY';

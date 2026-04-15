@@ -26,17 +26,20 @@ class PostsNotifier extends StateNotifier<AsyncValue<List<Post>>> {
     }
   }
 
-  Future<void> createPost(String content, {String postType = 'share'}) async {
+  Future<bool> createPost(String content, {String postType = 'share'}) async {
     final service = _ref.read(communityServiceProvider);
-    if (service == null) return;
+    if (service == null) return false;
 
     try {
       final post = await service.createPost(content: content, postType: postType);
       if (post != null && state.hasValue) {
         state = AsyncValue.data([post, ...state.value!]);
+        return true;
       }
+      return post != null;
     } catch (e) {
       debugPrint('Failed to create post: $e');
+      return false;
     }
   }
 
@@ -62,14 +65,37 @@ class PostsNotifier extends StateNotifier<AsyncValue<List<Post>>> {
     await service.toggleLike(postId);
   }
 
-  Future<void> deletePost(String postId) async {
+  Future<bool> deletePost(String postId) async {
     final service = _ref.read(communityServiceProvider);
-    if (service == null) return;
+    if (service == null) return false;
 
-    await service.deletePost(postId);
-    if (state.hasValue) {
-      state = AsyncValue.data(state.value!.where((p) => p.id != postId).toList());
+    try {
+      final deleted = await service.deletePost(postId);
+      if (!deleted) {
+        return false;
+      }
+      if (state.hasValue) {
+        state = AsyncValue.data(state.value!.where((p) => p.id != postId).toList());
+      }
+      return true;
+    } catch (e) {
+      debugPrint('Failed to delete post: $e');
+      return false;
     }
+  }
+
+  void applyCommentDelta(String postId, int delta) {
+    if (!state.hasValue) return;
+
+    final posts = state.value!;
+    final index = posts.indexWhere((post) => post.id == postId);
+    if (index == -1) return;
+
+    final updatedPosts = [...posts];
+    final post = updatedPosts[index];
+    final nextCount = post.commentsCount + delta;
+    updatedPosts[index] = post.copyWith(commentsCount: nextCount < 0 ? 0 : nextCount);
+    state = AsyncValue.data(updatedPosts);
   }
 }
 
@@ -89,8 +115,76 @@ final myRankProvider = FutureProvider<LeaderboardEntry?>((ref) async {
   return service.getMyRank();
 });
 
-final commentsProvider = FutureProvider.family<List<Comment>, String>((ref, postId) async {
-  final service = ref.read(communityServiceProvider);
-  if (service == null) return [];
-  return service.getComments(postId);
+class CommentsNotifier extends StateNotifier<AsyncValue<List<Comment>>> {
+  final Ref _ref;
+  final String _postId;
+
+  CommentsNotifier(this._ref, this._postId) : super(const AsyncValue.loading()) {
+    loadComments();
+  }
+
+  Future<void> loadComments() async {
+    final service = _ref.read(communityServiceProvider);
+    if (service == null) {
+      state = const AsyncValue.data([]);
+      return;
+    }
+
+    try {
+      final comments = await service.getComments(_postId);
+      state = AsyncValue.data(comments);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
+  Future<bool> addComment(String content) async {
+    final service = _ref.read(communityServiceProvider);
+    if (service == null) return false;
+
+    try {
+      final comment = await service.addComment(postId: _postId, content: content);
+      if (comment == null) {
+        return false;
+      }
+
+      if (state.hasValue) {
+        state = AsyncValue.data([...state.value!, comment]);
+      } else {
+        state = AsyncValue.data([comment]);
+      }
+
+      _ref.read(postsProvider.notifier).applyCommentDelta(_postId, 1);
+      return true;
+    } catch (e) {
+      debugPrint('Failed to add comment: $e');
+      return false;
+    }
+  }
+
+  Future<bool> deleteComment(String commentId) async {
+    final service = _ref.read(communityServiceProvider);
+    if (service == null) return false;
+
+    try {
+      final deleted = await service.deleteComment(commentId);
+      if (!deleted) {
+        return false;
+      }
+      if (state.hasValue) {
+        state = AsyncValue.data(
+          state.value!.where((comment) => comment.id != commentId).toList(),
+        );
+      }
+      _ref.read(postsProvider.notifier).applyCommentDelta(_postId, -1);
+      return true;
+    } catch (e) {
+      debugPrint('Failed to delete comment: $e');
+      return false;
+    }
+  }
+}
+
+final commentsProvider = StateNotifierProvider.family<CommentsNotifier, AsyncValue<List<Comment>>, String>((ref, postId) {
+  return CommentsNotifier(ref, postId);
 });

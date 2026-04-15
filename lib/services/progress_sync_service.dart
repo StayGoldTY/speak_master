@@ -11,26 +11,28 @@ class ProgressSyncService {
   ProgressSyncService(this._client, this._localStorage);
 
   String? get _userId => _client?.auth.currentUser?.id;
-  bool get _hasCloud => _client != null && _userId != null;
 
   Future<UserProgress> loadProgress() async {
-    if (!_hasCloud) {
+    final client = _client;
+    final userId = _userId;
+
+    if (client == null || userId == null) {
       return _localStorage.loadProgress();
     }
 
     try {
-      final data = await _client!
+      final data = await client
           .from('user_progress')
           .select()
-          .eq('user_id', _userId!)
+          .eq('user_id', userId)
           .maybeSingle();
 
-      if (data == null) return UserProgress.empty(_userId!);
+      if (data == null) return UserProgress.empty(userId);
 
-      final profile = await _client!
+      final profile = await client
           .from('profiles')
           .select('is_pro')
-          .eq('id', _userId!)
+          .eq('id', userId)
           .maybeSingle();
 
       final progress = UserProgress.fromJson(data).copyWith(
@@ -47,31 +49,35 @@ class ProgressSyncService {
 
   Future<void> saveProgress(UserProgress progress) async {
     await _localStorage.saveProgress(progress);
-    if (!_hasCloud) return;
+    final client = _client;
+    if (client == null || _userId == null) return;
 
     try {
-      await _client!.from('user_progress').upsert(progress.toJson());
+      await client.from('user_progress').upsert(progress.toJson());
     } catch (e) {
       debugPrint('Cloud sync failed: $e');
     }
   }
 
   Future<void> saveAssessment(AssessmentRecord record) async {
-    if (!_hasCloud) return;
+    final client = _client;
+    if (client == null || _userId == null) return;
     try {
-      await _client!.from('assessment_records').insert(record.toJson());
+      await client.from('assessment_records').insert(record.toJson());
     } catch (e) {
       debugPrint('Save assessment failed: $e');
     }
   }
 
   Future<List<AssessmentRecord>> getAssessmentHistory({int limit = 20}) async {
-    if (!_hasCloud) return [];
+    final client = _client;
+    final userId = _userId;
+    if (client == null || userId == null) return [];
     try {
-      final data = await _client!
+      final data = await client
           .from('assessment_records')
           .select()
-          .eq('user_id', _userId!)
+          .eq('user_id', userId)
           .order('created_at', ascending: false)
           .limit(limit);
       return (data as List).map((e) => AssessmentRecord.fromJson(e)).toList();
@@ -81,13 +87,14 @@ class ProgressSyncService {
   }
 
   Future<void> syncLocalToCloud() async {
-    if (!_hasCloud) return;
+    final userId = _userId;
+    if (_client == null || userId == null) return;
 
     final localProgress = _localStorage.loadProgress();
     final cloudProgress = await _fetchCloudProgress();
 
     if (cloudProgress == null) {
-      await saveProgress(localProgress.copyWith(userId: _userId));
+      await saveProgress(localProgress.copyWith(userId: userId));
       return;
     }
 
@@ -96,11 +103,15 @@ class ProgressSyncService {
   }
 
   Future<UserProgress?> _fetchCloudProgress() async {
+    final client = _client;
+    final userId = _userId;
+    if (client == null || userId == null) return null;
+
     try {
-      final data = await _client!
+      final data = await client
           .from('user_progress')
           .select()
-          .eq('user_id', _userId!)
+          .eq('user_id', userId)
           .maybeSingle();
       return data != null ? UserProgress.fromJson(data) : null;
     } catch (e) {

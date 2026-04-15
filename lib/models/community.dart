@@ -36,6 +36,24 @@ class UserProfile {
         'is_pro': isPro,
         'accent_preference': accentPreference,
       };
+
+  UserProfile copyWith({
+    String? username,
+    String? displayName,
+    String? avatarUrl,
+    bool? isPro,
+    String? accentPreference,
+  }) {
+    return UserProfile(
+      id: id,
+      username: username == null ? this.username : (username.isEmpty ? null : username),
+      displayName: displayName ?? this.displayName,
+      avatarUrl: avatarUrl == null ? this.avatarUrl : (avatarUrl.isEmpty ? null : avatarUrl),
+      isPro: isPro ?? this.isPro,
+      accentPreference: accentPreference ?? this.accentPreference,
+      createdAt: createdAt,
+    );
+  }
 }
 
 class Post {
@@ -77,14 +95,18 @@ class Post {
     );
   }
 
-  Post copyWith({int? likesCount, bool? isLikedByMe}) {
+  Post copyWith({
+    int? likesCount,
+    int? commentsCount,
+    bool? isLikedByMe,
+  }) {
     return Post(
       id: id,
       userId: userId,
       content: content,
       postType: postType,
       likesCount: likesCount ?? this.likesCount,
-      commentsCount: commentsCount,
+      commentsCount: commentsCount ?? this.commentsCount,
       createdAt: createdAt,
       author: author,
       isLikedByMe: isLikedByMe ?? this.isLikedByMe,

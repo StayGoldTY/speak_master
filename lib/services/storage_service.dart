@@ -1,7 +1,14 @@
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../models/user_progress.dart';
 
 class StorageService {
+  StorageService._internal();
+
+  static final StorageService _instance = StorageService._internal();
+
+  factory StorageService() => _instance;
+
   static const _keyStreak = 'streak_days';
   static const _keyTotalXp = 'total_xp';
   static const _keyLevel = 'level';
@@ -12,43 +19,121 @@ class StorageService {
   static const _keyIsPro = 'is_pro';
   static const _keyTodayAssessments = 'today_assessments';
   static const _keyStreakFreeze = 'streak_freeze';
+  static const _keyAccentPreference = 'accent_preference';
+  static const _keyReminderEnabled = 'reminder_enabled';
+  static const _keyReminderHour = 'reminder_hour';
+  static const _keyReminderMinute = 'reminder_minute';
 
-  late SharedPreferences _prefs;
+  SharedPreferences? _prefs;
 
   Future<void> init() async {
-    _prefs = await SharedPreferences.getInstance();
+    _prefs ??= await SharedPreferences.getInstance();
   }
 
   UserProgress loadProgress() {
+    final prefs = _prefs;
+    if (prefs == null) {
+      return const UserProgress(userId: 'local');
+    }
+
+    final lastActive = prefs.getString(_keyLastActive);
+
     return UserProgress(
       userId: 'local',
-      streakDays: _prefs.getInt(_keyStreak) ?? 0,
-      totalXp: _prefs.getInt(_keyTotalXp) ?? 0,
-      level: _prefs.getInt(_keyLevel) ?? 1,
-      todayAssessmentCount: _prefs.getInt(_keyTodayAssessments) ?? 0,
-      lastActiveDate: _prefs.getString(_keyLastActive) != null && _prefs.getString(_keyLastActive)!.isNotEmpty
-          ? DateTime.tryParse(_prefs.getString(_keyLastActive)!)
-          : null,
-      completedLessons: (_prefs.getStringList(_keyCompletedLessons) ?? []).toSet(),
-      completedUnits: (_prefs.getStringList(_keyCompletedUnits) ?? []).toSet(),
-      earnedBadges: (_prefs.getStringList(_keyEarnedBadges) ?? []).toSet(),
-      isPro: _prefs.getBool(_keyIsPro) ?? false,
-      streakFreezeRemaining: _prefs.getInt(_keyStreakFreeze) ?? 1,
+      streakDays: prefs.getInt(_keyStreak) ?? 0,
+      totalXp: prefs.getInt(_keyTotalXp) ?? 0,
+      level: prefs.getInt(_keyLevel) ?? 1,
+      todayAssessmentCount: prefs.getInt(_keyTodayAssessments) ?? 0,
+      lastActiveDate: lastActive != null && lastActive.isNotEmpty ? DateTime.tryParse(lastActive) : null,
+      completedLessons: (prefs.getStringList(_keyCompletedLessons) ?? const []).toSet(),
+      completedUnits: (prefs.getStringList(_keyCompletedUnits) ?? const []).toSet(),
+      earnedBadges: (prefs.getStringList(_keyEarnedBadges) ?? const []).toSet(),
+      isPro: prefs.getBool(_keyIsPro) ?? false,
+      streakFreezeRemaining: prefs.getInt(_keyStreakFreeze) ?? 1,
     );
   }
 
   Future<void> saveProgress(UserProgress progress) async {
+    await init();
+    final prefs = _prefs!;
+
     await Future.wait([
-      _prefs.setInt(_keyStreak, progress.streakDays),
-      _prefs.setInt(_keyTotalXp, progress.totalXp),
-      _prefs.setInt(_keyLevel, progress.level),
-      _prefs.setInt(_keyTodayAssessments, progress.todayAssessmentCount),
-      _prefs.setString(_keyLastActive, progress.lastActiveDate?.toIso8601String() ?? ''),
-      _prefs.setStringList(_keyCompletedLessons, progress.completedLessons.toList()),
-      _prefs.setStringList(_keyCompletedUnits, progress.completedUnits.toList()),
-      _prefs.setStringList(_keyEarnedBadges, progress.earnedBadges.toList()),
-      _prefs.setBool(_keyIsPro, progress.isPro),
-      _prefs.setInt(_keyStreakFreeze, progress.streakFreezeRemaining),
+      prefs.setInt(_keyStreak, progress.streakDays),
+      prefs.setInt(_keyTotalXp, progress.totalXp),
+      prefs.setInt(_keyLevel, progress.level),
+      prefs.setInt(_keyTodayAssessments, progress.todayAssessmentCount),
+      prefs.setString(_keyLastActive, progress.lastActiveDate?.toIso8601String() ?? ''),
+      prefs.setStringList(_keyCompletedLessons, progress.completedLessons.toList()),
+      prefs.setStringList(_keyCompletedUnits, progress.completedUnits.toList()),
+      prefs.setStringList(_keyEarnedBadges, progress.earnedBadges.toList()),
+      prefs.setBool(_keyIsPro, progress.isPro),
+      prefs.setInt(_keyStreakFreeze, progress.streakFreezeRemaining),
     ]);
+  }
+
+  String loadAccentPreference({String fallback = 'american'}) {
+    final prefs = _prefs;
+    if (prefs == null) {
+      return fallback;
+    }
+
+    return prefs.getString(_keyAccentPreference) ?? fallback;
+  }
+
+  Future<void> saveAccentPreference(String accentPreference) async {
+    await init();
+    await _prefs!.setString(_keyAccentPreference, accentPreference);
+  }
+
+  ReminderPreference loadReminderPreference() {
+    final prefs = _prefs;
+    if (prefs == null) {
+      return const ReminderPreference(enabled: false, hour: 20, minute: 0);
+    }
+
+    return ReminderPreference(
+      enabled: prefs.getBool(_keyReminderEnabled) ?? false,
+      hour: prefs.getInt(_keyReminderHour) ?? 20,
+      minute: prefs.getInt(_keyReminderMinute) ?? 0,
+    );
+  }
+
+  Future<void> saveReminderPreference(ReminderPreference preference) async {
+    await init();
+    await Future.wait([
+      _prefs!.setBool(_keyReminderEnabled, preference.enabled),
+      _prefs!.setInt(_keyReminderHour, preference.hour),
+      _prefs!.setInt(_keyReminderMinute, preference.minute),
+    ]);
+  }
+}
+
+class ReminderPreference {
+  final bool enabled;
+  final int hour;
+  final int minute;
+
+  const ReminderPreference({
+    required this.enabled,
+    required this.hour,
+    required this.minute,
+  });
+
+  String get label {
+    final hh = hour.toString().padLeft(2, '0');
+    final mm = minute.toString().padLeft(2, '0');
+    return '$hh:$mm';
+  }
+
+  ReminderPreference copyWith({
+    bool? enabled,
+    int? hour,
+    int? minute,
+  }) {
+    return ReminderPreference(
+      enabled: enabled ?? this.enabled,
+      hour: hour ?? this.hour,
+      minute: minute ?? this.minute,
+    );
   }
 }

@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+
 import '../core/theme/app_colors.dart';
 import '../models/phoneme.dart';
 
 class PhonemeCard extends StatelessWidget {
   final Phoneme phoneme;
 
-  const PhonemeCard({super.key, required this.phoneme});
+  const PhonemeCard({
+    super.key,
+    required this.phoneme,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -13,36 +17,47 @@ class PhonemeCard extends StatelessWidget {
     final color = isVowel ? AppColors.vowelColor : AppColors.consonantColor;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             '/${phoneme.symbol}/',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color),
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 4),
           Text(
-            phoneme.nameCn.replaceAll(RegExp(r'.*音\s*/'), '').replaceAll('/', ''),
-            style: TextStyle(fontSize: 10, color: color.withValues(alpha: 0.7)),
-            maxLines: 1,
+            phoneme.nameEn,
+            style: TextStyle(
+              fontSize: 11,
+              color: color.withValues(alpha: 0.85),
+            ),
           ),
           if (phoneme.isChineseDifficulty) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: AppColors.errorRed.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(999),
               ),
               child: const Text(
-                '难点',
-                style: TextStyle(fontSize: 9, color: AppColors.errorRed, fontWeight: FontWeight.w500),
+                '常见难点',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: AppColors.errorRed,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],

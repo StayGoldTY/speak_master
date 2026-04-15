@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+
 import '../core/theme/app_colors.dart';
 
 class DidYouKnowCard extends StatefulWidget {
   final String text;
   final String source;
 
-  const DidYouKnowCard({super.key, required this.text, required this.source});
+  const DidYouKnowCard({
+    super.key,
+    required this.text,
+    required this.source,
+  });
 
   @override
   State<DidYouKnowCard> createState() => _DidYouKnowCardState();
@@ -18,14 +23,15 @@ class _DidYouKnowCardState extends State<DidYouKnowCard> {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () => setState(() => _isExpanded = !_isExpanded),
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(18),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.all(16),
+        duration: const Duration(milliseconds: 220),
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: const Color(0xFFF0F4FF),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
+          color: const Color(0xFFF3F5FF),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.14)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -33,38 +39,55 @@ class _DidYouKnowCardState extends State<DidYouKnowCard> {
             Row(
               children: [
                 Container(
-                  width: 28,
-                  height: 28,
+                  width: 34,
+                  height: 34,
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.lightbulb_outline, color: AppColors.primary, size: 16),
+                  child: const Icon(
+                    Icons.lightbulb_outline,
+                    color: AppColors.primary,
+                    size: 18,
+                  ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 12),
                 const Expanded(
                   child: Text(
                     '你知道吗？',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primary),
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
                   ),
                 ),
                 Icon(
                   _isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
                   color: AppColors.primary,
-                  size: 20,
                 ),
               ],
             ),
             if (_isExpanded) ...[
-              const SizedBox(height: 12),
-              Text(
-                widget.text,
-                style: const TextStyle(fontSize: 13, color: AppColors.textPrimary, height: 1.6),
+              const SizedBox(height: 14),
+              SelectionArea(
+                child: Text(
+                  widget.text,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textPrimary,
+                    height: 1.7,
+                  ),
+                ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Text(
-                '— ${widget.source}',
-                style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontStyle: FontStyle.italic),
+                '来源：${widget.source}',
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                  fontStyle: FontStyle.italic,
+                ),
               ),
             ],
           ],
