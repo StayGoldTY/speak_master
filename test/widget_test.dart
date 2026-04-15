@@ -298,12 +298,20 @@ void main() {
       find.byKey(const ValueKey('speech-reference-practice_free_0')),
       findsOneWidget,
     );
+    expect(
+      find.byKey(const ValueKey('speech-voice-record-practice_free_0')),
+      findsOneWidget,
+    );
 
     await tester.tap(find.text('跟读参考'));
     await tester.pumpAndSettle();
 
     expect(
       find.byKey(const ValueKey('speech-reference-practice_follow_0')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('speech-voice-record-practice_follow_0')),
       findsOneWidget,
     );
   });
@@ -329,6 +337,10 @@ void main() {
     expect(find.text('这里是识别检查 + 引导式自评'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('speech-reference-assessment_assessment_1')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('speech-voice-record-assessment_assessment_1')),
       findsOneWidget,
     );
   });

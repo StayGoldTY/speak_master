@@ -57,6 +57,7 @@
   - 跟读参考材料
   - 绕口令挑战
 - `Practice` 中的自由朗读 / 跟读参考材料已接入标准发音播放与识别版自动检查
+- lesson / practice / assessment 的发音教练面板现已接入真实录音采集与本地回放对照
 - `Assessment` 现已支持标准发音播放 + 识别检查 + 引导式自评，并将结果回写到进度系统
 - `progress_provider.dart` 已避免重复刷 XP，并支持 `completeAssessment`
 

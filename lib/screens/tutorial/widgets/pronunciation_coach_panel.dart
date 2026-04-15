@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:speech_to_text/speech_recognition_result.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../models/lesson.dart';
@@ -52,13 +55,20 @@ class PronunciationCoachPanel extends ConsumerStatefulWidget {
 class _PronunciationCoachPanelState
     extends ConsumerState<PronunciationCoachPanel> {
   late final PronunciationPracticeService _practiceService;
+  StreamSubscription<void>? _recordingPlaybackCompletedSubscription;
+  Timer? _recordingTimer;
 
   bool _isSpeaking = false;
   bool _isListening = false;
+  bool _isRecordingLearnerVoice = false;
+  bool _isPlayingLearnerRecording = false;
   bool _didFinalizeCurrentSession = false;
+
+  Duration _recordingElapsed = Duration.zero;
   String _transcript = '';
   String? _statusMessage;
   String? _errorMessage;
+  LearnerRecording? _learnerRecording;
   PronunciationCheckResult? _checkResult;
 
   String get _panelId => widget.step?.id ?? widget.panelId!;
@@ -105,19 +115,38 @@ class _PronunciationCoachPanelState
     if (widget.description != null && widget.description!.trim().isNotEmpty) {
       return widget.description!.trim();
     }
-    return '这里会优先播放系统合成的标准参考发音，并用浏览器语音识别检查你是否把目标词和句子读出来。';
+    return '这里会先播放系统标准发音，再提供真实录音、回放对照和浏览器识别检查。';
+  }
+
+  String get _recordingElapsedLabel {
+    final totalSeconds = _recordingElapsed.inSeconds;
+    final minutes = (totalSeconds ~/ 60).toString().padLeft(2, '0');
+    final seconds = (totalSeconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
   }
 
   @override
   void initState() {
     super.initState();
     _practiceService = PronunciationPracticeService();
+    _recordingPlaybackCompletedSubscription = _practiceService
+        .recordingPlaybackCompleted
+        .listen((_) {
+          if (!mounted) {
+            return;
+          }
+          setState(() {
+            _isPlayingLearnerRecording = false;
+            _statusMessage = '你的录音回放完成，可以再听一次标准发音做对照。';
+          });
+        });
   }
 
   @override
   void dispose() {
-    _practiceService.stopSpeaking();
-    _practiceService.cancelListening();
+    _recordingTimer?.cancel();
+    _recordingPlaybackCompletedSubscription?.cancel();
+    _practiceService.dispose();
     super.dispose();
   }
 
@@ -160,13 +189,43 @@ class _PronunciationCoachPanelState
               ),
               label: Text(_isSpeaking ? '停止参考音' : '播放标准发音'),
             ),
+            FilledButton.icon(
+              key: ValueKey('speech-voice-record-$_panelId'),
+              onPressed: hasReferenceText ? _toggleLearnerRecording : null,
+              style: FilledButton.styleFrom(
+                backgroundColor: _isRecordingLearnerVoice
+                    ? AppColors.errorRed
+                    : widget.accentColor,
+              ),
+              icon: Icon(
+                _isRecordingLearnerVoice
+                    ? Icons.stop_circle_outlined
+                    : Icons.fiber_manual_record_rounded,
+              ),
+              label: Text(
+                _isRecordingLearnerVoice ? '停止并保存录音' : '录自己的声音',
+              ),
+            ),
+            OutlinedButton.icon(
+              onPressed: _learnerRecording == null
+                  ? null
+                  : _toggleLearnerRecordingPlayback,
+              icon: Icon(
+                _isPlayingLearnerRecording
+                    ? Icons.stop_circle_outlined
+                    : Icons.play_circle_outline_rounded,
+              ),
+              label: Text(
+                _isPlayingLearnerRecording ? '停止回放录音' : '回放我的录音',
+              ),
+            ),
             OutlinedButton.icon(
               onPressed:
                   hasReferenceText || _transcript.isNotEmpty || _checkResult != null
                       ? _resetCheck
                       : null,
               icon: const Icon(Icons.refresh_rounded),
-              label: const Text('清空这轮反馈'),
+              label: const Text('清空本轮反馈'),
             ),
           ],
         ),
@@ -230,20 +289,43 @@ class _PronunciationCoachPanelState
                 .toList(),
           ),
         ],
+        if (_isRecordingLearnerVoice) ...[
+          const SizedBox(height: 16),
+          _InfoBox(
+            backgroundColor: AppColors.errorRed.withValues(alpha: 0.08),
+            textColor: AppColors.errorRed,
+            icon: Icons.mic_rounded,
+            text: '正在录你的跟读声音：$_recordingElapsedLabel。读完整句后再点击“停止并保存录音”。',
+          ),
+        ],
+        if (_learnerRecording != null) ...[
+          const SizedBox(height: 16),
+          _LearnerRecordingCard(
+            panelId: _panelId,
+            recording: _learnerRecording!,
+            isPlaying: _isPlayingLearnerRecording,
+            onTogglePlayback: _toggleLearnerRecordingPlayback,
+            onClear: _clearLearnerRecording,
+          ),
+        ],
         const SizedBox(height: 24),
         Center(
           child: Column(
             children: [
               RecordButton(
                 isRecording: _isListening,
-                onTap: hasReferenceText ? _toggleRecognition : () {},
+                onTap: hasReferenceText && !_isRecordingLearnerVoice
+                    ? _toggleRecognition
+                    : () {},
               ),
               const SizedBox(height: 12),
               Text(
                 _isListening
                     ? '识别中，读完整句后再点一次停止。'
+                    : _isRecordingLearnerVoice
+                    ? '请先结束你的录音，再开始自动识别检查。'
                     : hasReferenceText
-                    ? '点击开始跟读，并在结束后查看自动检查。'
+                    ? '点击开始跟读识别，自动检查会告诉你哪些词还没有稳定读出来。'
                     : '补充参考文本后即可开始跟读识别。',
                 style: const TextStyle(
                   fontSize: 13,
@@ -312,7 +394,7 @@ class _PronunciationCoachPanelState
           textColor: AppColors.textSecondary,
           icon: Icons.shield_moon_outlined,
           text:
-              '这里的自动检查基于浏览器语音识别，看你是否把目标词和句子读出来；它不是声学发音评分，也不会假装给出口型分数。',
+              '这里已经有真实的标准发音、真实录音和真实回放；自动检查仍基于浏览器语音识别，只负责告诉你“有没有把目标词句读出来”，不是声学发音评分。',
         ),
       ],
     );
@@ -320,6 +402,12 @@ class _PronunciationCoachPanelState
 
   Future<void> _toggleReferencePlayback() async {
     if (_referenceText.isEmpty) {
+      return;
+    }
+    if (_isRecordingLearnerVoice) {
+      setState(() {
+        _statusMessage = '请先停止你的录音，再播放标准发音。';
+      });
       return;
     }
 
@@ -330,9 +418,19 @@ class _PronunciationCoachPanelState
       }
       setState(() {
         _isSpeaking = false;
-        _statusMessage = '参考发音已停止。';
+        _statusMessage = '标准发音已停止。';
       });
       return;
+    }
+
+    if (_isPlayingLearnerRecording) {
+      await _practiceService.stopLearnerRecordingPlayback();
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isPlayingLearnerRecording = false;
+      });
     }
 
     setState(() {
@@ -350,7 +448,7 @@ class _PronunciationCoachPanelState
         return;
       }
       setState(() {
-        _statusMessage = '参考发音播放完成，可以立刻跟读一遍。';
+        _statusMessage = '参考发音播放完成，可以立刻录自己的声音或做识别检查。';
       });
     } catch (_) {
       if (!mounted) {
@@ -368,8 +466,168 @@ class _PronunciationCoachPanelState
     }
   }
 
+  Future<void> _toggleLearnerRecording() async {
+    if (_referenceText.isEmpty) {
+      return;
+    }
+
+    if (_isRecordingLearnerVoice) {
+      await _stopLearnerRecording();
+      return;
+    }
+
+    if (_isListening) {
+      await _finalizeRecognitionAfterManualStop();
+    }
+
+    if (_isSpeaking) {
+      await _practiceService.stopSpeaking();
+    }
+    if (_isPlayingLearnerRecording) {
+      await _practiceService.stopLearnerRecordingPlayback();
+    }
+
+    setState(() {
+      _isSpeaking = false;
+      _isPlayingLearnerRecording = false;
+      _recordingElapsed = Duration.zero;
+      _errorMessage = null;
+      _statusMessage = '正在启动真实录音，请完整读一遍后再停止保存。';
+    });
+
+    try {
+      final started = await _practiceService.startLearnerRecording();
+      if (!mounted) {
+        return;
+      }
+      if (!started) {
+        setState(() {
+          _errorMessage = '浏览器没有授权麦克风，暂时无法录下你的跟读。';
+          _statusMessage = null;
+        });
+        return;
+      }
+
+      _recordingTimer?.cancel();
+      _recordingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _recordingElapsed += const Duration(seconds: 1);
+        });
+      });
+
+      setState(() {
+        _isRecordingLearnerVoice = true;
+        _learnerRecording = null;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _errorMessage = '当前环境暂时无法开始录音，请检查浏览器权限后重试。';
+        _statusMessage = null;
+      });
+    }
+  }
+
+  Future<void> _stopLearnerRecording() async {
+    _recordingTimer?.cancel();
+
+    try {
+      final recording = await _practiceService.stopLearnerRecording(
+        duration: _recordingElapsed,
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isRecordingLearnerVoice = false;
+        _learnerRecording = recording;
+        _statusMessage = recording == null
+            ? '录音已结束，但这次没有拿到可回放的音频。'
+            : '你的跟读录音已保存到当前会话，可以马上回放对照。';
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isRecordingLearnerVoice = false;
+        _errorMessage = '停止录音时出现问题，请稍后再试。';
+      });
+    }
+  }
+
+  Future<void> _toggleLearnerRecordingPlayback() async {
+    final recording = _learnerRecording;
+    if (recording == null) {
+      return;
+    }
+    if (_isRecordingLearnerVoice) {
+      setState(() {
+        _statusMessage = '请先结束当前录音，再回放自己的声音。';
+      });
+      return;
+    }
+
+    if (_isPlayingLearnerRecording) {
+      await _practiceService.stopLearnerRecordingPlayback();
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isPlayingLearnerRecording = false;
+        _statusMessage = '已停止回放你的录音。';
+      });
+      return;
+    }
+
+    if (_isSpeaking) {
+      await _practiceService.stopSpeaking();
+    }
+
+    setState(() {
+      _isSpeaking = false;
+      _isPlayingLearnerRecording = true;
+      _errorMessage = null;
+      _statusMessage = '正在回放你的跟读录音。';
+    });
+
+    try {
+      await _practiceService.playLearnerRecording(recording.path);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isPlayingLearnerRecording = false;
+        _errorMessage = '当前环境暂时无法回放这段录音。';
+      });
+    }
+  }
+
+  Future<void> _clearLearnerRecording() async {
+    if (_isPlayingLearnerRecording) {
+      await _practiceService.stopLearnerRecordingPlayback();
+    }
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _isPlayingLearnerRecording = false;
+      _learnerRecording = null;
+      _statusMessage = '已清空本轮录音，你可以重新录一遍。';
+    });
+  }
+
   Future<void> _toggleRecognition() async {
     if (_referenceText.isEmpty) {
+      return;
+    }
+    if (_isRecordingLearnerVoice) {
       return;
     }
 
@@ -378,8 +636,17 @@ class _PronunciationCoachPanelState
       return;
     }
 
+    if (_isSpeaking) {
+      await _practiceService.stopSpeaking();
+    }
+    if (_isPlayingLearnerRecording) {
+      await _practiceService.stopLearnerRecordingPlayback();
+    }
+
     _didFinalizeCurrentSession = false;
     setState(() {
+      _isSpeaking = false;
+      _isPlayingLearnerRecording = false;
       _transcript = '';
       _checkResult = null;
       _errorMessage = null;
@@ -415,7 +682,7 @@ class _PronunciationCoachPanelState
     );
   }
 
-  void _handleRecognitionResult(result) {
+  void _handleRecognitionResult(SpeechRecognitionResult result) {
     if (!mounted) {
       return;
     }
@@ -586,6 +853,75 @@ class _InfoBox extends StatelessWidget {
               text,
               style: TextStyle(fontSize: 13, color: textColor, height: 1.6),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LearnerRecordingCard extends StatelessWidget {
+  final String panelId;
+  final LearnerRecording recording;
+  final bool isPlaying;
+  final VoidCallback onTogglePlayback;
+  final VoidCallback onClear;
+
+  const _LearnerRecordingCard({
+    required this.panelId,
+    required this.recording,
+    required this.isPlaying,
+    required this.onTogglePlayback,
+    required this.onClear,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: ValueKey('speech-recording-$panelId'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '我的跟读录音',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '真实录音时长：${recording.durationLabel}。当前仅保存在本轮练习会话中，可随时回放对照。',
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+              height: 1.6,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              FilledButton.icon(
+                onPressed: onTogglePlayback,
+                icon: Icon(
+                  isPlaying
+                      ? Icons.stop_circle_outlined
+                      : Icons.play_circle_fill_rounded,
+                ),
+                label: Text(isPlaying ? '停止回放' : '回放我的录音'),
+              ),
+              OutlinedButton.icon(
+                onPressed: onClear,
+                icon: const Icon(Icons.delete_outline_rounded),
+                label: const Text('删除这段录音'),
+              ),
+            ],
           ),
         ],
       ),
