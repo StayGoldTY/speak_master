@@ -15,10 +15,10 @@ class OpsConsoleScreen extends ConsumerWidget {
     final track = ref.watch(v2PrimaryTrackProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('V2 Ops Console')),
+      appBar: AppBar(title: const Text('V2 运营后台')),
       body: V2PageScaffold(
-        title: 'Ops console',
-        subtitle: 'A first admin-facing slice for version status, generation jobs, and publish readiness.',
+        title: '运营后台',
+        subtitle: '先承接课程版本状态、生成任务和发布准备度，后续再继续扩展内容审核与数据看板能力。',
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -26,9 +26,21 @@ class OpsConsoleScreen extends ConsumerWidget {
               spacing: 12,
               runSpacing: 12,
               children: [
-                _OpsMetric(label: 'Drafts', value: '${dashboard.draftCount}', color: AppColors.accentOrange),
-                _OpsMetric(label: 'Published', value: '${dashboard.publishedCount}', color: AppColors.successGreen),
-                _OpsMetric(label: 'Failed jobs', value: '${dashboard.failedJobs}', color: AppColors.errorRed),
+                _OpsMetric(
+                  label: '草稿版本',
+                  value: '${dashboard.draftCount}',
+                  color: AppColors.accentOrange,
+                ),
+                _OpsMetric(
+                  label: '已发布',
+                  value: '${dashboard.publishedCount}',
+                  color: AppColors.successGreen,
+                ),
+                _OpsMetric(
+                  label: '失败任务',
+                  value: '${dashboard.failedJobs}',
+                  color: AppColors.errorRed,
+                ),
               ],
             ),
             const SizedBox(height: 20),
@@ -36,18 +48,30 @@ class OpsConsoleScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(track.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                  Text(
+                    track.title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                   const SizedBox(height: 8),
-                  Text(track.subtitle, style: const TextStyle(color: AppColors.textSecondary)),
+                  Text(
+                    track.subtitle,
+                    style: const TextStyle(color: AppColors.textSecondary),
+                  ),
                   const SizedBox(height: 12),
-                  V2Pill(label: track.version.id, color: AppColors.primary),
+                  V2Pill(
+                    label: '当前版本 ${track.version.id}',
+                    color: AppColors.primary,
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: 20),
             const V2SectionTitle(
-              title: 'Generation jobs',
-              subtitle: 'This is a seeded V2 dashboard view for the upcoming AI and content workflow.',
+              title: '生成任务',
+              subtitle: '这里展示当前种子数据下的后台任务视图，后续会接入真实 AI 生成与人工审核流程。',
             ),
             ...dashboard.jobs.map(
               (job) => Padding(
@@ -59,14 +83,29 @@ class OpsConsoleScreen extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(job.title, style: const TextStyle(fontWeight: FontWeight.w800)),
+                            Text(
+                              job.title,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
                             const SizedBox(height: 6),
-                            Text(job.summary, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                            Text(
+                              job.summary,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: AppColors.textSecondary,
+                                height: 1.55,
+                              ),
+                            ),
                           ],
                         ),
                       ),
                       const SizedBox(width: 12),
-                      V2Pill(label: job.status.name, color: _colorFor(job.status)),
+                      V2Pill(
+                        label: job.status.label,
+                        color: _colorFor(job.status),
+                      ),
                     ],
                   ),
                 ),
@@ -107,9 +146,22 @@ class _OpsMetric extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
+            ),
             const SizedBox(height: 8),
-            Text(value, style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: color)),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.w800,
+                color: color,
+              ),
+            ),
           ],
         ),
       ),

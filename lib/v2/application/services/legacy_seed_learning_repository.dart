@@ -79,32 +79,34 @@ class LegacySeedLearningRepository implements V2LearningRepository {
       SpeakingPrompt(
         id: 'shadowing_cafe',
         kind: ActivityKind.shadowing,
-        title: 'Cafe shadowing',
-        scenario: 'Shadow a short service line with clean rhythm.',
-        instruction: 'Listen, then repeat the full line in one connected chunk.',
+        title: '咖啡店影子跟读',
+        scenario: '先听标准音，再把整句话连成一个自然意群跟出来。',
+        instruction: '重点保持句子连贯，别把每个词都读得一样重。',
         referenceText: 'Can I get a large latte with oat milk, please?',
         focusWords: ['large', 'latte', 'oat', 'please'],
-        checklist: ['Keep "Can I get a" light.', 'Land clearly on "latte" and "oat milk".'],
+        checklist: ['“Can I get a” 前半段轻一点。', '把 “latte” 和 “oat milk” 落清楚。'],
       ),
       SpeakingPrompt(
         id: 'dialog_checkin',
         kind: ActivityKind.dialogRoleplay,
-        title: 'Hotel check-in',
-        scenario: 'Practice a guided roleplay line for front desk English.',
-        instruction: 'Say the guest line naturally and keep the stressed words steady.',
-        referenceText: 'Hi, I have a reservation under the name Lin for two nights.',
+        title: '酒店入住对话',
+        scenario: '用前台入住场景做一轮引导式跟练。',
+        instruction: '把住客这句话说自然，重点词读稳，不要着急。',
+        referenceText:
+            'Hi, I have a reservation under the name Lin for two nights.',
         focusWords: ['reservation', 'Lin', 'two nights'],
-        checklist: ['Do not rush the name.', 'Let "reservation" carry the main stress.'],
+        checklist: ['人名不要一带而过。', '“reservation” 是这句话的重音中心。'],
       ),
       SpeakingPrompt(
         id: 'assessment_pitch',
         kind: ActivityKind.assessmentTask,
-        title: 'Confidence assessment',
-        scenario: 'Read one clean sentence and review the feedback summary.',
-        instruction: 'Read it once clearly, then retry after the feedback.',
-        referenceText: 'The weather is getting better, so we should go earlier.',
+        title: '发音状态测评',
+        scenario: '读完一句完整句子后，查看结构化反馈和复练建议。',
+        instruction: '先清楚读一遍，再根据反馈重试一轮。',
+        referenceText:
+            'The weather is getting better, so we should go earlier.',
         focusWords: ['weather', 'better', 'earlier'],
-        checklist: ['Keep rhythm across the sentence.', 'Avoid flattening the final phrase.'],
+        checklist: ['整句节奏要连起来。', '结尾短语不要全部压平。'],
       ),
     ];
   }
@@ -119,13 +121,13 @@ class LegacySeedLearningRepository implements V2LearningRepository {
     final prompts = getSpeakingPrompts();
 
     return DailyPlan(
-      headline: 'Today for $learnerName',
-      subtitle: 'One main lesson, one weak-point loop, and one transfer task.',
+      headline: '$learnerName 的今日学习',
+      subtitle: '主线课、补弱练习和口语迁移三步一起推进。',
       items: [
         DailyPlanItem(
           id: 'plan_lesson',
-          title: nextLesson?.title ?? 'Review foundation loop',
-          subtitle: nextLesson?.description ?? 'Keep pronunciation basics sharp with a quick review.',
+          title: nextLesson?.title ?? '回顾发音基础',
+          subtitle: nextLesson?.description ?? '先把发音底座复习一轮，保持嘴形和节奏感觉。',
           route: nextLesson == null ? '/speaking' : '/lesson/${nextLesson.id}',
           kind: DailyPlanItemKind.lesson,
           estimatedMinutes: nextLesson?.estimatedMinutes ?? 12,
@@ -134,10 +136,10 @@ class LegacySeedLearningRepository implements V2LearningRepository {
         DailyPlanItem(
           id: 'plan_review',
           title: snapshot.weakPoints.isEmpty
-              ? 'Run a minimal-pair refresher'
-              : 'Rebuild ${snapshot.weakPoints.first.label}',
+              ? '做一轮最小对立体复习'
+              : '补强 ${snapshot.weakPoints.first.label}',
           subtitle: snapshot.weakPoints.isEmpty
-              ? 'Refresh a contrast before it gets fuzzy.'
+              ? '趁感觉还在，先复习一组容易混淆的对比音。'
               : snapshot.weakPoints.first.description,
           route: '/speaking',
           kind: DailyPlanItemKind.review,
@@ -159,17 +161,18 @@ class LegacySeedLearningRepository implements V2LearningRepository {
 
   @override
   MasterySnapshot buildMasterySnapshot(UserProgress progress) {
-    final weakPoints = progress.phonemeScores.entries
-        .where((entry) => entry.value < 75)
-        .map(
-          (entry) => WeakPointSummary(
-            label: _labelForPhoneme(entry.key),
-            description: 'This target still needs a cleaner repeat-and-transfer loop.',
-            score: entry.value,
-          ),
-        )
-        .toList()
-      ..sort((a, b) => a.score.compareTo(b.score));
+    final weakPoints =
+        progress.phonemeScores.entries
+            .where((entry) => entry.value < 75)
+            .map(
+              (entry) => WeakPointSummary(
+                label: _labelForPhoneme(entry.key),
+                description: '这个目标音还需要再做一轮“跟读到迁移”的巩固。',
+                score: entry.value,
+              ),
+            )
+            .toList()
+          ..sort((a, b) => a.score.compareTo(b.score));
 
     final reviewQueue = weakPoints
         .take(4)
@@ -191,8 +194,8 @@ class LegacySeedLearningRepository implements V2LearningRepository {
       weakPoints: weakPoints,
       reviewQueue: reviewQueue,
       recommendedFocus: weakPoints.isEmpty
-          ? 'Keep moving through the foundation track and keep a daily speaking loop.'
-          : 'Revisit ${weakPoints.first.label} before adding more new material.',
+          ? '主线可以继续推进，但每天仍要保留一轮口语输出。'
+          : '先把 ${weakPoints.first.label} 练稳，再继续加新内容。',
     );
   }
 
@@ -205,41 +208,42 @@ class LegacySeedLearningRepository implements V2LearningRepository {
       jobs: [
         GenerationJob(
           id: 'job_001',
-          title: 'Pronunciation Foundation v1 seed import',
+          title: '发音基础课 v1 内容导入',
           status: GenerationJobStatus.ready,
           createdAt: DateTime(2026, 4, 15, 9, 0),
-          summary: 'Imported u1-u10 into versioned course blueprints.',
+          summary: '已将 u1-u10 映射为可版本化的课程蓝图。',
         ),
         GenerationJob(
           id: 'job_002',
-          title: 'Daily dialog drill pack',
+          title: '每日对话练习包',
           status: GenerationJobStatus.reviewing,
           createdAt: DateTime(2026, 4, 16, 8, 30),
-          summary: 'Awaiting content review before publish.',
+          summary: '等待人工审核后即可发布。',
         ),
         GenerationJob(
           id: 'job_003',
-          title: 'Travel roleplay expansion',
+          title: '旅行场景对话扩展',
           status: GenerationJobStatus.failed,
           createdAt: DateTime(2026, 4, 16, 9, 10),
-          summary: 'Schema validation failed on two dialog activities.',
+          summary: '两条对话活动未通过 schema 校验。',
         ),
       ],
     );
   }
 
   static CourseTrack _buildTrack() {
-    final units = UnitsData.units
-        .where((unit) => _primaryUnitIds.contains(unit.id))
-        .map(_mapUnit)
-        .toList()
-      ..sort((a, b) => a.order.compareTo(b.order));
+    final units =
+        UnitsData.units
+            .where((unit) => _primaryUnitIds.contains(unit.id))
+            .map(_mapUnit)
+            .toList()
+          ..sort((a, b) => a.order.compareTo(b.order));
 
     return CourseTrack(
       id: 'pronunciation_foundation',
-      title: 'Pronunciation Foundation',
-      subtitle: 'The legacy foundation track, rebuilt as V2 seed content.',
-      description: 'A structured speaking-first course track for Chinese adult learners.',
+      title: '发音基础课',
+      subtitle: '由原 u1-u10 重构而来的正式课程主线',
+      description: '面向中国成人学习者的发音优先课程，先打底，再迁移到真实开口场景。',
       version: CourseVersion(
         id: 'pronunciation_foundation_v1',
         trackId: 'pronunciation_foundation',
@@ -251,12 +255,14 @@ class LegacySeedLearningRepository implements V2LearningRepository {
   }
 
   static UnitBlueprint _mapUnit(LearningUnit unit) {
-    final lessons = LessonsData.getLessonsForUnit(unit.id).map(_mapLesson).toList();
+    final lessons = LessonsData.getLessonsForUnit(
+      unit.id,
+    ).map(_mapLesson).toList();
     return UnitBlueprint(
       id: unit.id,
       order: unit.order,
-      title: unit.titleEn,
-      subtitle: unit.titleCn,
+      title: _preferChinese(unit.titleCn, unit.titleEn),
+      subtitle: unit.titleEn,
       description: unit.description,
       targetPhonemes: List<String>.from(unit.targetPhonemes),
       lessons: lessons,
@@ -269,8 +275,8 @@ class LegacySeedLearningRepository implements V2LearningRepository {
       id: lesson.id,
       unitId: lesson.unitId,
       order: lesson.order,
-      title: lesson.titleEn,
-      subtitle: lesson.titleCn,
+      title: _preferChinese(lesson.titleCn, lesson.titleEn),
+      subtitle: lesson.titleEn,
       description: lesson.description,
       estimatedMinutes: lesson.estimatedMinutes,
       activities: activities,
@@ -302,9 +308,7 @@ class LegacySeedLearningRepository implements V2LearningRepository {
       pairs: _readPairs(step.metadata?['pairs']),
       options: options,
       correctOptionId: correctIndex == null ? null : 'opt_$correctIndex',
-      checklist: [
-        if ((step.content ?? '').isNotEmpty) 'Read once slowly, then once more naturally.',
-      ],
+      checklist: [if ((step.content ?? '').isNotEmpty) '先慢读一遍，再用更自然的节奏读一遍。'],
       metadata: step.metadata ?? const {},
     );
   }
@@ -379,6 +383,16 @@ class LegacySeedLearningRepository implements V2LearningRepository {
 
   String _labelForPhoneme(String key) {
     final phoneme = _findPhoneme(key);
-    return phoneme == null ? key.replaceFirst(RegExp(r'^[a-z]_'), '') : phoneme.symbol;
+    return phoneme == null
+        ? key.replaceFirst(RegExp(r'^[a-z]_'), '')
+        : phoneme.symbol;
+  }
+
+  static String _preferChinese(String? chinese, String english) {
+    final normalized = (chinese ?? '').trim();
+    if (normalized.isNotEmpty) {
+      return normalized;
+    }
+    return english;
   }
 }

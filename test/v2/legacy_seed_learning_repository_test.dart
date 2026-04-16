@@ -8,22 +8,27 @@ void main() {
     final track = repository.getPrimaryTrack();
 
     expect(track.id, 'pronunciation_foundation');
+    expect(track.title, '发音基础课');
     expect(track.units, hasLength(10));
     expect(track.units.first.lessons, isNotEmpty);
     expect(repository.getLessonById('u1_L1'), isNotNull);
     expect(repository.getFeaturedTargets(), isNotEmpty);
   });
 
-  test('V2 seed repository builds a daily plan from next lesson and review loop', () {
-    final repository = LegacySeedLearningRepository();
-    const progress = UserProgress(userId: 'local');
-    final plan = repository.buildDailyPlan(
-      progress: progress,
-      learnerName: 'Taylor',
-    );
+  test(
+    'V2 seed repository builds a daily plan from next lesson and review loop',
+    () {
+      final repository = LegacySeedLearningRepository();
+      const progress = UserProgress(userId: 'local');
+      final plan = repository.buildDailyPlan(
+        progress: progress,
+        learnerName: 'Taylor',
+      );
 
-    expect(plan.items, hasLength(3));
-    expect(plan.items.first.route, '/lesson/u1_L1');
-    expect(plan.items.first.title, contains('Voice'));
-  });
+      expect(plan.items, hasLength(3));
+      expect(plan.headline, contains('Taylor'));
+      expect(plan.items.first.route, '/lesson/u1_L1');
+      expect(plan.items.first.title, isNotEmpty);
+    },
+  );
 }

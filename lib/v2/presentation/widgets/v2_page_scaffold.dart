@@ -18,57 +18,218 @@ class V2PageScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1120),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
+    return Container(
+      decoration: const BoxDecoration(gradient: AppColors.gradientCanvas),
+      child: SafeArea(
+        child: Stack(
+          children: [
+            const _PageDecorations(),
+            Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1120),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final compact = constraints.maxWidth < 760;
+
+                      return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            title,
-                            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                  fontWeight: FontWeight.w800,
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.white.withValues(alpha: 0.96),
+                                  AppColors.surfaceAccent.withValues(
+                                    alpha: 0.82,
+                                  ),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(32),
+                              border: Border.all(
+                                color: AppColors.glassBorder.withValues(
+                                  alpha: 0.78,
                                 ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            subtitle,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: AppColors.textSecondary,
-                              height: 1.6,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.06,
+                                  ),
+                                  blurRadius: 28,
+                                  offset: const Offset(0, 14),
+                                ),
+                              ],
                             ),
+                            child: compact
+                                ? Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const _HeaderEyebrow(),
+                                      const SizedBox(height: 12),
+                                      _HeaderText(
+                                        title: title,
+                                        subtitle: subtitle,
+                                      ),
+                                      if (actions.isNotEmpty) ...[
+                                        const SizedBox(height: 16),
+                                        Wrap(
+                                          spacing: 8,
+                                          runSpacing: 8,
+                                          children: actions,
+                                        ),
+                                      ],
+                                    ],
+                                  )
+                                : Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const _HeaderEyebrow(),
+                                      const SizedBox(width: 18),
+                                      Expanded(
+                                        child: _HeaderText(
+                                          title: title,
+                                          subtitle: subtitle,
+                                        ),
+                                      ),
+                                      if (actions.isNotEmpty) ...[
+                                        const SizedBox(width: 16),
+                                        Wrap(
+                                          spacing: 8,
+                                          runSpacing: 8,
+                                          children: actions,
+                                        ),
+                                      ],
+                                    ],
+                                  ),
                           ),
+                          const SizedBox(height: 24),
+                          child,
                         ],
-                      ),
-                    ),
-                    if (actions.isNotEmpty) ...[
-                      const SizedBox(width: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: actions,
-                      ),
-                    ],
-                  ],
+                      );
+                    },
+                  ),
                 ),
-                const SizedBox(height: 24),
-                child,
-              ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HeaderEyebrow extends StatelessWidget {
+  const _HeaderEyebrow();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        gradient: AppColors.gradientSunrise,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '声临其境',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: AppColors.primaryDark,
             ),
           ),
+          SizedBox(height: 2),
+          Text(
+            'Speak Master',
+            style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeaderText extends StatelessWidget {
+  final String title;
+  final String subtitle;
+
+  const _HeaderText({required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(
+            context,
+          ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
         ),
+        const SizedBox(height: 8),
+        Text(
+          subtitle,
+          style: const TextStyle(
+            fontSize: 14,
+            color: AppColors.textSecondary,
+            height: 1.7,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PageDecorations extends StatelessWidget {
+  const _PageDecorations();
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Stack(
+        children: [
+          Positioned(
+            top: -80,
+            right: -20,
+            child: Container(
+              width: 240,
+              height: 240,
+              decoration: BoxDecoration(
+                gradient: AppColors.gradientSunrise,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.accent.withValues(alpha: 0.08),
+                    blurRadius: 56,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            top: 120,
+            left: -60,
+            child: Container(
+              width: 180,
+              height: 180,
+              decoration: BoxDecoration(
+                color: AppColors.secondaryLight.withValues(alpha: 0.14),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -90,9 +251,25 @@ class V2InfoCard extends StatelessWidget {
       width: double.infinity,
       padding: padding,
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+        gradient: LinearGradient(
+          colors: [
+            Colors.white,
+            AppColors.surfaceMuted.withValues(alpha: 0.96),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(
+          color: AppColors.glassBorder.withValues(alpha: 0.72),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.05),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+          ),
+        ],
       ),
       child: child,
     );
@@ -126,7 +303,7 @@ class V2SectionTitle extends StatelessWidget {
             style: const TextStyle(
               fontSize: 13,
               color: AppColors.textSecondary,
-              height: 1.5,
+              height: 1.55,
             ),
           ),
         ],
@@ -139,19 +316,16 @@ class V2Pill extends StatelessWidget {
   final String label;
   final Color color;
 
-  const V2Pill({
-    super.key,
-    required this.label,
-    required this.color,
-  });
+  const V2Pill({super.key, required this.label, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.12)),
       ),
       child: Text(
         label,

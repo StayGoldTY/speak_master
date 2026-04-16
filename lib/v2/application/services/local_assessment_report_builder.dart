@@ -10,27 +10,25 @@ class LocalAssessmentReportBuilder {
     required String recommendedRoute,
   }) {
     final overallLabel = switch (feedback.fluencyBand) {
-      FluencyBand.confident when feedback.coverageScore >= 0.85 =>
-        'Ready to move on',
-      FluencyBand.steady => 'Keep tightening the line',
-      _ => 'Rebuild the target once more',
+      FluencyBand.confident when feedback.coverageScore >= 0.85 => '状态不错，可以继续',
+      FluencyBand.steady => '再收一收会更稳',
+      _ => '建议先补强这一轮',
     };
 
     final nextSteps = <String>[
       ...feedback.retrySuggestions.take(3),
-      if (feedback.weakWords.isEmpty)
-        'Repeat the same line once more and keep the rhythm equally stable.',
+      if (feedback.weakWords.isEmpty) '把同一句再读一遍，继续保持当前节奏。',
     ];
 
     final weakTargets = feedback.weakPointTags.take(3).toList();
     final weakSummary = weakTargets.isEmpty
-        ? 'The main line is already coming through clearly.'
-        : 'The least stable targets were ${weakTargets.map((item) => item.label).join(', ')}.';
+        ? '这句话的主体已经比较清楚。'
+        : '目前最不稳定的点是 ${weakTargets.map((item) => item.label).join('、')}。';
 
     return SpeechAssessmentReport(
       overallLabel: overallLabel,
       overview:
-          'Coverage is ${(feedback.coverageScore * 100).round()}%. $weakSummary ${feedback.teacherExplanation}',
+          '识别覆盖率约 ${(feedback.coverageScore * 100).round()}%。$weakSummary ${feedback.teacherExplanation}',
       weakTargets: weakTargets,
       nextSteps: nextSteps,
       recommendedRoute: recommendedRoute,

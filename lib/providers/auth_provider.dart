@@ -41,8 +41,12 @@ class AuthState {
       user: user ?? this.user,
       profile: profile ?? this.profile,
       isLoading: isLoading ?? this.isLoading,
-      errorMessage: identical(errorMessage, _authFieldUnset) ? this.errorMessage : errorMessage as String?,
-      feedbackMessage: identical(feedbackMessage, _authFieldUnset) ? this.feedbackMessage : feedbackMessage as String?,
+      errorMessage: identical(errorMessage, _authFieldUnset)
+          ? this.errorMessage
+          : errorMessage as String?,
+      feedbackMessage: identical(feedbackMessage, _authFieldUnset)
+          ? this.feedbackMessage
+          : feedbackMessage as String?,
     );
   }
 }
@@ -64,7 +68,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
     final currentUser = authService.currentUser;
     if (currentUser != null) {
-      state = state.copyWith(status: AuthStatus.authenticated, user: currentUser);
+      state = state.copyWith(
+        status: AuthStatus.authenticated,
+        user: currentUser,
+      );
       _loadProfile();
       _syncProgress();
     } else {
@@ -105,7 +112,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<bool> signUpWithEmail(String email, String password, String? name) async {
+  Future<bool> signUpWithEmail(
+    String email,
+    String password,
+    String? name,
+  ) async {
     final auth = _ref.read(authServiceProvider);
     if (auth == null) {
       state = state.copyWith(errorMessage: '当前环境还没有接入账号服务，暂时不能注册。');
@@ -146,10 +157,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       return false;
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: '注册失败，请稍后再试。',
-      );
+      state = state.copyWith(isLoading: false, errorMessage: '注册失败，请稍后再试。');
       return false;
     }
   }
@@ -182,10 +190,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       return false;
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: '登录失败，请稍后再试。',
-      );
+      state = state.copyWith(isLoading: false, errorMessage: '登录失败，请稍后再试。');
       return false;
     }
   }
@@ -294,10 +299,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       return false;
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: '重置邮件发送失败，请稍后再试。',
-      );
+      state = state.copyWith(isLoading: false, errorMessage: '重置邮件发送失败，请稍后再试。');
       return false;
     }
   }
@@ -310,7 +312,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }) async {
     final auth = _ref.read(authServiceProvider);
     if (auth == null) {
-      state = state.copyWith(errorMessage: '当前环境还没有接入账号资料同步。');
+      state = state.copyWith(errorMessage: '当前环境还没有接入账号资料同步能力。');
       return false;
     }
 
@@ -364,10 +366,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       return false;
     } catch (e) {
       debugPrint('Failed to update profile: $e');
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: '资料保存失败，请稍后再试。',
-      );
+      state = state.copyWith(isLoading: false, errorMessage: '资料保存失败，请稍后再试。');
       return false;
     }
   }
@@ -381,10 +380,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   void clearMessages() {
-    state = state.copyWith(
-      errorMessage: null,
-      feedbackMessage: null,
-    );
+    state = state.copyWith(errorMessage: null, feedbackMessage: null);
   }
 
   String _readableAuthError(sb.AuthException error) {
@@ -409,7 +405,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       return '网络连接失败，请检查后重试。';
     }
 
-    return error.message;
+    return '账号操作失败：${error.message}';
   }
 
   String _readableProfileError(sb.PostgrestException error) {

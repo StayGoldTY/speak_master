@@ -27,10 +27,21 @@ class AppTheme {
       scaffoldBackgroundColor: AppColors.bgLight,
       canvasColor: AppColors.bgLight,
       splashFactory: InkSparkle.splashFactory,
+      dialogTheme: DialogThemeData(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      ),
       textTheme: baseTextTheme.copyWith(
+        displaySmall: baseTextTheme.displaySmall?.copyWith(
+          fontWeight: FontWeight.w800,
+          color: AppColors.textPrimary,
+          letterSpacing: -0.8,
+        ),
         headlineMedium: baseTextTheme.headlineMedium?.copyWith(
           fontWeight: FontWeight.w800,
           color: AppColors.textPrimary,
+          letterSpacing: -0.6,
         ),
         titleLarge: baseTextTheme.titleLarge?.copyWith(
           fontWeight: FontWeight.w700,
@@ -59,7 +70,7 @@ class AppTheme {
         margin: EdgeInsets.zero,
         color: AppColors.cardLight,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       ),
       dividerTheme: DividerThemeData(
         color: AppColors.textHint.withValues(alpha: 0.24),
@@ -73,7 +84,7 @@ class AppTheme {
           shadowColor: Colors.transparent,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(20),
           ),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
         ),
@@ -85,7 +96,7 @@ class AppTheme {
           foregroundColor: AppColors.textOnPrimary,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(20),
           ),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
         ),
@@ -96,7 +107,7 @@ class AppTheme {
           side: BorderSide(color: AppColors.primary.withValues(alpha: 0.18)),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(20),
           ),
           textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
         ),
@@ -112,7 +123,7 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: Colors.white,
+        fillColor: AppColors.surfaceMuted,
         labelStyle: const TextStyle(color: AppColors.textSecondary),
         helperStyle: const TextStyle(color: AppColors.textSecondary),
         prefixIconColor: AppColors.textSecondary,
@@ -159,11 +170,11 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: Colors.white.withValues(alpha: 0.96),
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         shadowColor: AppColors.primary.withValues(alpha: 0.06),
-        height: 74,
-        indicatorColor: AppColors.primary.withValues(alpha: 0.1),
+        height: 78,
+        indicatorColor: AppColors.primary.withValues(alpha: 0.12),
         labelTextStyle: WidgetStateProperty.resolveWith(
           (states) => TextStyle(
             fontSize: 12,
@@ -195,11 +206,11 @@ class AppTheme {
         linearTrackColor: AppColors.bgLight,
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: AppColors.bgLight,
+        backgroundColor: AppColors.surfaceMuted,
         selectedColor: AppColors.primary.withValues(alpha: 0.12),
         checkmarkColor: AppColors.primary,
         side: BorderSide(color: AppColors.textHint.withValues(alpha: 0.2)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         labelStyle: const TextStyle(
           color: AppColors.textPrimary,
           fontWeight: FontWeight.w600,

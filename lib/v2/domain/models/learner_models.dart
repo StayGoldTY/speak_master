@@ -11,18 +11,18 @@ extension LearningGoalX on LearningGoal {
   String get key => name;
 
   String get title => switch (this) {
-        LearningGoal.pronunciationConfidence => 'Pronunciation confidence',
-        LearningGoal.dailyConversation => 'Daily conversation',
-        LearningGoal.travelEnglish => 'Travel English',
-        LearningGoal.workplaceSpeaking => 'Workplace speaking',
-      };
+    LearningGoal.pronunciationConfidence => '发音更自信',
+    LearningGoal.dailyConversation => '日常交流',
+    LearningGoal.travelEnglish => '旅行英语',
+    LearningGoal.workplaceSpeaking => '职场表达',
+  };
 
   String get subtitle => switch (this) {
-        LearningGoal.pronunciationConfidence => 'Build clean sounds, rhythm, and speaking control.',
-        LearningGoal.dailyConversation => 'Get comfortable with everyday English responses.',
-        LearningGoal.travelEnglish => 'Practice common travel interactions and clarity.',
-        LearningGoal.workplaceSpeaking => 'Sound more confident in meetings and presentations.',
-      };
+    LearningGoal.pronunciationConfidence => '先把发音、节奏和开口稳定度练扎实。',
+    LearningGoal.dailyConversation => '更自然地说出高频生活表达。',
+    LearningGoal.travelEnglish => '提前练熟出行中的关键句型和场景。',
+    LearningGoal.workplaceSpeaking => '在会议、汇报和沟通里更清楚、更有底气。',
+  };
 
   static LearningGoal fromKey(String? value) {
     return LearningGoal.values.firstWhere(
@@ -38,16 +38,16 @@ extension PlacementLevelX on PlacementLevel {
   String get key => name;
 
   String get title => switch (this) {
-        PlacementLevel.starter => 'Starter',
-        PlacementLevel.elementary => 'Elementary',
-        PlacementLevel.intermediate => 'Intermediate',
-      };
+    PlacementLevel.starter => '零基础起步',
+    PlacementLevel.elementary => '基础入门',
+    PlacementLevel.intermediate => '进阶提升',
+  };
 
   String get subtitle => switch (this) {
-        PlacementLevel.starter => 'Need heavy support and clearer sound foundations.',
-        PlacementLevel.elementary => 'Can follow simple English but need stronger speaking habits.',
-        PlacementLevel.intermediate => 'Ready for more natural rhythm and transfer practice.',
-      };
+    PlacementLevel.starter => '需要更多中文引导和发音基础支撑。',
+    PlacementLevel.elementary => '能看懂简单英语，但口语习惯还需要重建。',
+    PlacementLevel.intermediate => '可以开始强化自然节奏、连读和迁移应用。',
+  };
 
   static PlacementLevel fromKey(String? value) {
     return PlacementLevel.values.firstWhere(
@@ -73,6 +73,10 @@ class LearnerProfileV2 {
     required this.dailyMinutes,
     required this.onboardingComplete,
   });
+
+  String get accentLabel => accentPreference.accentLabel;
+
+  String get accentShortLabel => accentPreference.accentShortLabel;
 }
 
 enum DailyPlanItemKind { lesson, review, speaking, assessment, dialogue }
@@ -180,5 +184,15 @@ class V2LearnerSetupState {
       dailyMinutes: dailyMinutes ?? this.dailyMinutes,
       onboardingComplete: onboardingComplete ?? this.onboardingComplete,
     );
+  }
+}
+
+extension AccentPreferenceValueX on String {
+  String get accentLabel {
+    return toLowerCase() == 'british' ? '英式发音' : '美式发音';
+  }
+
+  String get accentShortLabel {
+    return toLowerCase() == 'british' ? '英式' : '美式';
   }
 }

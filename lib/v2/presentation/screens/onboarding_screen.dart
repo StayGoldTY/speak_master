@@ -17,20 +17,20 @@ class OnboardingScreen extends ConsumerWidget {
 
     return Scaffold(
       body: V2PageScaffold(
-        title: 'Welcome to Speak Master V2',
-        subtitle: 'Set your speaking goal, current level, and daily pace. We will use this to shape your daily plan and pronunciation loop.',
+        title: '先完成你的学习设置',
+        subtitle: '告诉我们你的目标、当前水平和每日可投入时间，系统会据此生成中文引导更强、发音训练更聚焦的学习计划。',
         actions: [
           TextButton(
             onPressed: () => context.push('/auth?from=%2Fprofile'),
-            child: const Text('Sign in'),
+            child: const Text('登录账号'),
           ),
         ],
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const V2SectionTitle(
-              title: 'Primary goal',
-              subtitle: 'Choose the speaking outcome you care about most right now.',
+              title: '你最想先解决什么',
+              subtitle: '先锁定一个主要目标，系统会优先安排相关的练习和口语任务。',
             ),
             Wrap(
               spacing: 12,
@@ -45,7 +45,10 @@ class OnboardingScreen extends ConsumerWidget {
                       children: [
                         Text(goal.title),
                         const SizedBox(height: 4),
-                        Text(goal.subtitle, style: const TextStyle(fontSize: 12)),
+                        Text(
+                          goal.subtitle,
+                          style: const TextStyle(fontSize: 12),
+                        ),
                       ],
                     ),
                   ),
@@ -56,8 +59,8 @@ class OnboardingScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
             const V2SectionTitle(
-              title: 'Placement',
-              subtitle: 'This controls how much foundation support the V2 learner flow should add.',
+              title: '当前大致水平',
+              subtitle: '这会影响前期中文说明的密度、课程难度和练习节奏。',
             ),
             Wrap(
               spacing: 12,
@@ -72,7 +75,10 @@ class OnboardingScreen extends ConsumerWidget {
                       children: [
                         Text(level.title),
                         const SizedBox(height: 4),
-                        Text(level.subtitle, style: const TextStyle(fontSize: 12)),
+                        Text(
+                          level.subtitle,
+                          style: const TextStyle(fontSize: 12),
+                        ),
                       ],
                     ),
                   ),
@@ -87,28 +93,32 @@ class OnboardingScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Daily commitment',
+                    '每天准备学多久',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '${setup.dailyMinutes} minutes per day',
-                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+                    '${setup.dailyMinutes} 分钟 / 天',
+                    style: const TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   Slider(
                     value: setup.dailyMinutes.toDouble(),
                     min: 10,
                     max: 30,
                     divisions: 4,
-                    label: '${setup.dailyMinutes} min',
-                    onChanged: (value) => notifier.setDailyMinutes(value.round()),
+                    label: '${setup.dailyMinutes} 分钟',
+                    onChanged: (value) =>
+                        notifier.setDailyMinutes(value.round()),
                   ),
                   const Text(
-                    'We will keep the first V2 plan focused: one main lesson, one weak-point drill, and one speaking transfer task.',
+                    '首期计划会保持足够聚焦：1 节主线课 + 1 次补弱训练 + 1 次口语迁移，既能稳步推进，也不容易中断。',
                     style: TextStyle(
                       fontSize: 13,
                       color: AppColors.textSecondary,
-                      height: 1.55,
+                      height: 1.6,
                     ),
                   ),
                 ],
@@ -124,7 +134,7 @@ class OnboardingScreen extends ConsumerWidget {
                     context.go('/today');
                   }
                 },
-                child: const Text('Build my V2 learning plan'),
+                child: const Text('生成我的今日计划'),
               ),
             ),
           ],

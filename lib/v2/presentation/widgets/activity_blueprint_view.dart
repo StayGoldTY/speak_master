@@ -9,10 +9,7 @@ import 'v2_page_scaffold.dart';
 class ActivityBlueprintView extends StatelessWidget {
   final ActivityBlueprint activity;
 
-  const ActivityBlueprintView({
-    super.key,
-    required this.activity,
-  });
+  const ActivityBlueprintView({super.key, required this.activity});
 
   @override
   Widget build(BuildContext context) {
@@ -82,9 +79,7 @@ class ActivityBlueprintView extends StatelessWidget {
 class _MinimalPairActivityCard extends StatelessWidget {
   final ActivityBlueprint activity;
 
-  const _MinimalPairActivityCard({
-    required this.activity,
-  });
+  const _MinimalPairActivityCard({required this.activity});
 
   @override
   Widget build(BuildContext context) {
@@ -96,7 +91,7 @@ class _MinimalPairActivityCard extends StatelessWidget {
       instruction: activity.instruction,
       referenceText: activity.referenceText ?? '',
       focusWords: activity.focusWords,
-      checklist: const ['Listen for the contrast first, then repeat both sides.'],
+      checklist: const ['先听清两个音的差别，再把两边都跟读一遍。'],
     );
 
     return Column(
@@ -107,7 +102,10 @@ class _MinimalPairActivityCard extends StatelessWidget {
             children: [
               Text(
                 activity.instruction,
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               const SizedBox(height: 14),
               ...activity.pairs.map(
@@ -147,10 +145,7 @@ class _MinimalPairActivityCard extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        SpeakingPromptCard(
-          prompt: prompt,
-          accentColor: AppColors.secondary,
-        ),
+        SpeakingPromptCard(prompt: prompt, accentColor: AppColors.secondary),
       ],
     );
   }
@@ -159,9 +154,7 @@ class _MinimalPairActivityCard extends StatelessWidget {
 class _McqActivityCard extends StatefulWidget {
   final ActivityBlueprint activity;
 
-  const _McqActivityCard({
-    required this.activity,
-  });
+  const _McqActivityCard({required this.activity});
 
   @override
   State<_McqActivityCard> createState() => _McqActivityCardState();
@@ -199,45 +192,48 @@ class _McqActivityCardState extends State<_McqActivityCard> {
             ),
           ],
           const SizedBox(height: 16),
-          ...widget.activity.options.map(
-            (option) {
-              final isSelected = _selectedOptionId == option.id;
-              final isCorrect = option.id == widget.activity.correctOptionId;
+          ...widget.activity.options.map((option) {
+            final isSelected = _selectedOptionId == option.id;
+            final isCorrect = option.id == widget.activity.correctOptionId;
 
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: InkWell(
-                  onTap: () {
-                    setState(() {
-                      _selectedOptionId = option.id;
-                    });
-                  },
-                  borderRadius: BorderRadius.circular(18),
-                  child: Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? (isCorrect ? AppColors.successGreen : AppColors.accentOrange)
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: InkWell(
+                onTap: () {
+                  setState(() {
+                    _selectedOptionId = option.id;
+                  });
+                },
+                borderRadius: BorderRadius.circular(18),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? (isCorrect
+                                  ? AppColors.successGreen
+                                  : AppColors.accentOrange)
                               .withValues(alpha: 0.12)
-                          : AppColors.bgLight,
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(child: Text(option.label)),
-                        if (isSelected)
-                          Icon(
-                            isCorrect ? Icons.check_circle : Icons.info_outline,
-                            color: isCorrect ? AppColors.successGreen : AppColors.accentOrange,
-                          ),
-                      ],
-                    ),
+                        : AppColors.bgLight,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(child: Text(option.label)),
+                      if (isSelected)
+                        Icon(
+                          isCorrect ? Icons.check_circle : Icons.info_outline,
+                          color: isCorrect
+                              ? AppColors.successGreen
+                              : AppColors.accentOrange,
+                        ),
+                    ],
                   ),
                 ),
-              );
-            },
-          ),
-          if ((_selectedOptionId ?? '').isNotEmpty && (explanation ?? '').isNotEmpty) ...[
+              ),
+            );
+          }),
+          if ((_selectedOptionId ?? '').isNotEmpty &&
+              (explanation ?? '').isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(
               explanation!,

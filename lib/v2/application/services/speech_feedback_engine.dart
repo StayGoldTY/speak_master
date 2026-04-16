@@ -29,41 +29,35 @@ class SpeechFeedbackEngine {
     final paceBand = wordRatio > 1.18
         ? PaceBand.tooFast
         : wordRatio < 0.72
-            ? PaceBand.tooSlow
-            : PaceBand.balanced;
+        ? PaceBand.tooSlow
+        : PaceBand.balanced;
     final weakWords = {
       ...result.missingFocusWords,
       ...result.missingWords,
     }.take(4).toList();
     final anchoredFocus = focusWords.take(3).toList();
     final stressHints = anchoredFocus.isEmpty
-        ? const ['Keep the important content words clear and slightly longer.']
-        : [
-            'Lean on ${anchoredFocus.join(', ')} and keep function words lighter.',
-          ];
+        ? const ['把内容词读得更清楚一点，并适当拉长重音。']
+        : ['下一轮重点盯住 ${anchoredFocus.join('、')}，虚词可以更轻一些。'];
     final retrySuggestions = [
-      if (weakWords.isNotEmpty)
-        'Retry with extra clarity on ${weakWords.join(', ')}.',
-      if (paceBand == PaceBand.tooFast)
-        'Slow down slightly so the key words land cleanly.',
-      if (paceBand == PaceBand.tooSlow)
-        'Keep the line connected and avoid over-separating each word.',
-      if (result.recognitionCoverage < 0.72)
-        'Listen once more and repeat in one smooth breath group.',
+      if (weakWords.isNotEmpty) '重练时把 ${weakWords.join('、')} 读得更清楚。',
+      if (paceBand == PaceBand.tooFast) '语速稍微放慢一点，让重点词真正落下来。',
+      if (paceBand == PaceBand.tooSlow) '保持整句连贯，不要把每个词切得太开。',
+      if (result.recognitionCoverage < 0.72) '再听一遍标准音，然后按一个顺畅意群连着读。',
     ];
     final weakTags = [
       ...weakWords.map(
         (word) => WeakPointTag(
           label: word,
           type: WeakPointTagType.word,
-          reason: 'This word was not stably recognized in the last attempt.',
+          reason: '这个词在上一轮里没有被稳定识别出来。',
         ),
       ),
       if (paceBand != PaceBand.balanced)
         WeakPointTag(
-          label: 'pace',
+          label: '节奏',
           type: WeakPointTagType.rhythm,
-          reason: 'The current delivery sounds less balanced than the target line.',
+          reason: '这一轮的整体节奏还没有贴近目标句子的自然状态。',
         ),
     ];
 
@@ -92,15 +86,15 @@ class SpeechFeedbackEngine {
     required PaceBand paceBand,
   }) {
     final paceLine = switch (paceBand) {
-      PaceBand.tooFast => 'Your pace is running a little fast.',
-      PaceBand.tooSlow => 'Your pace is a little too segmented.',
-      PaceBand.balanced => 'Your overall pace is in a healthy range.',
+      PaceBand.tooFast => '这一轮语速略快。',
+      PaceBand.tooSlow => '这一轮节奏稍微有些断开。',
+      PaceBand.balanced => '整体节奏基本合适。',
     };
     final coverage = (result.recognitionCoverage * 100).round();
     final weakLine = weakWords.isEmpty
-        ? 'Most target words were recognized.'
-        : 'Focus next on ${weakWords.join(', ')}.';
+        ? '大部分目标词已经被识别到。'
+        : '下一轮重点盯住 ${weakWords.join('、')}。';
 
-    return 'Coverage is $coverage%. $paceLine $weakLine';
+    return '识别覆盖率约为 $coverage%。$paceLine $weakLine';
   }
 }

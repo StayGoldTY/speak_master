@@ -13,28 +13,27 @@ enum ActivityKind {
 
 extension ActivityKindX on ActivityKind {
   String get label => switch (this) {
-        ActivityKind.phonemeIntro => 'Phoneme intro',
-        ActivityKind.minimalPair => 'Minimal pair',
-        ActivityKind.wordRepeat => 'Word repeat',
-        ActivityKind.sentenceReadAloud => 'Sentence read aloud',
-        ActivityKind.shadowing => 'Shadowing',
-        ActivityKind.dialogRoleplay => 'Dialog roleplay',
-        ActivityKind.dictation => 'Dictation',
-        ActivityKind.mcq => 'MCQ',
-        ActivityKind.speakingReflection => 'Speaking reflection',
-        ActivityKind.assessmentTask => 'Assessment',
-      };
+    ActivityKind.phonemeIntro => '音素讲解',
+    ActivityKind.minimalPair => '最小对立体',
+    ActivityKind.wordRepeat => '单词跟读',
+    ActivityKind.sentenceReadAloud => '句子朗读',
+    ActivityKind.shadowing => '影子跟读',
+    ActivityKind.dialogRoleplay => '情景对话',
+    ActivityKind.dictation => '听写练习',
+    ActivityKind.mcq => '选择题',
+    ActivityKind.speakingReflection => '口语复盘',
+    ActivityKind.assessmentTask => '发音测评',
+  };
 
   bool get isSpeaking => switch (this) {
-        ActivityKind.wordRepeat ||
-        ActivityKind.sentenceReadAloud ||
-        ActivityKind.shadowing ||
-        ActivityKind.dialogRoleplay ||
-        ActivityKind.speakingReflection ||
-        ActivityKind.assessmentTask =>
-          true,
-        _ => false,
-      };
+    ActivityKind.wordRepeat ||
+    ActivityKind.sentenceReadAloud ||
+    ActivityKind.shadowing ||
+    ActivityKind.dialogRoleplay ||
+    ActivityKind.speakingReflection ||
+    ActivityKind.assessmentTask => true,
+    _ => false,
+  };
 }
 
 class ChoiceOption {
@@ -42,11 +41,7 @@ class ChoiceOption {
   final String label;
   final String? explanation;
 
-  const ChoiceOption({
-    required this.id,
-    required this.label,
-    this.explanation,
-  });
+  const ChoiceOption({required this.id, required this.label, this.explanation});
 }
 
 class MinimalPairExample {
@@ -172,6 +167,15 @@ class CourseTrack {
 }
 
 enum GenerationJobStatus { queued, reviewing, failed, ready }
+
+extension GenerationJobStatusX on GenerationJobStatus {
+  String get label => switch (this) {
+    GenerationJobStatus.queued => '排队中',
+    GenerationJobStatus.reviewing => '待审核',
+    GenerationJobStatus.failed => '失败',
+    GenerationJobStatus.ready => '可发布',
+  };
+}
 
 class GenerationJob {
   final String id;

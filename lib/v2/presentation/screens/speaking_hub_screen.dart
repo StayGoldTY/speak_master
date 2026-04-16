@@ -16,42 +16,56 @@ class SpeakingHubScreen extends ConsumerWidget {
     final prompts = ref.watch(v2SpeakingPromptsProvider);
 
     return V2PageScaffold(
-      title: 'Speaking Lab',
-      subtitle: 'The V2 speaking system keeps reference audio, recording, playback, transcript-based feedback, structured retry advice, and in-session history together.',
+      title: '口语训练中心',
+      subtitle: '把参考音、录音、回放、转写、反馈和历史结果放在同一处，围绕发音和开口做更完整的闭环训练。',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const V2SectionTitle(
-            title: 'Phoneme clinic',
-            subtitle: 'These high-friction sounds are surfaced first for Chinese adult learners.',
+            title: '高频发音难点',
+            subtitle: '优先展示中国成人学习者最容易卡住的目标音，先把嘴形和发音动作练对。',
           ),
           Wrap(
             spacing: 12,
             runSpacing: 12,
             children: targets.map((target) {
               return SizedBox(
-                width: 260,
+                width: 270,
                 child: V2InfoCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Wrap(
                         spacing: 8,
+                        runSpacing: 8,
                         children: [
-                          V2Pill(label: target.symbol, color: AppColors.primary),
-                          V2Pill(label: target.title, color: AppColors.secondary),
+                          V2Pill(
+                            label: target.symbol,
+                            color: AppColors.primary,
+                          ),
+                          V2Pill(
+                            label: target.title,
+                            color: AppColors.secondary,
+                          ),
                         ],
                       ),
                       const SizedBox(height: 12),
-                      Text(target.subtitle, style: const TextStyle(fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 8),
                       Text(
-                        target.mouthPosition,
-                        style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.55),
+                        target.subtitle,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Try: ${target.examples.join(', ')}',
+                        target.mouthPosition,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                          height: 1.6,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '示例词：${target.examples.join('、')}',
                         style: const TextStyle(fontSize: 13, height: 1.55),
                       ),
                     ],
@@ -60,10 +74,10 @@ class SpeakingHubScreen extends ConsumerWidget {
               );
             }).toList(),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 22),
           const V2SectionTitle(
-            title: 'Guided speaking modes',
-            subtitle: 'This is the first V2 slice of shadowing, dialog practice, and assessment loops.',
+            title: '引导式口语模式',
+            subtitle: '先从影子跟读、场景对话和测评模式切入，逐步把训练做成完整的口语闭环。',
           ),
           ...prompts.map(
             (prompt) => Padding(

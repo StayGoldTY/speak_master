@@ -56,9 +56,7 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
                     (word) => V2Pill(label: word, color: AppColors.secondary),
                   ),
               V2Pill(
-                label: learner.accentPreference == 'british'
-                    ? 'British'
-                    : 'American',
+                label: learner.accentShortLabel,
                 color: AppColors.textSecondary,
               ),
             ],
@@ -74,7 +72,7 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
             style: const TextStyle(
               fontSize: 14,
               color: AppColors.textSecondary,
-              height: 1.55,
+              height: 1.6,
             ),
           ),
           if (widget.prompt.checklist.isNotEmpty) ...[
@@ -107,11 +105,11 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
           ],
           const SizedBox(height: 6),
           const Text(
-            'Record your voice before checking if you want the cloud speech pipeline to transcribe and assess the attempt. If cloud analysis is unavailable, the app falls back to local transcript-based coaching.',
+            '如果你希望走云端转写和结构化测评，先录下自己的声音再开始检查。云端暂时不可用时，系统会自动回退到本地识别反馈，并明确告诉你当前反馈类型。',
             style: TextStyle(
               fontSize: 12,
               color: AppColors.textSecondary,
-              height: 1.5,
+              height: 1.55,
             ),
           ),
           PronunciationCoachPanel(
@@ -130,7 +128,7 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
             const LinearProgressIndicator(minHeight: 4),
             const SizedBox(height: 8),
             const Text(
-              'Uploading the attempt and generating a structured speaking report...',
+              '正在上传本次口语尝试，并生成结构化发音反馈...',
               style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),
           ],
@@ -141,6 +139,7 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
               style: const TextStyle(
                 fontSize: 12,
                 color: AppColors.textSecondary,
+                height: 1.5,
               ),
             ),
           ],
@@ -199,7 +198,7 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
 
     setState(() {
       _isSubmitting = true;
-      _submissionStatus = 'Preparing cloud speech assessment...';
+      _submissionStatus = '正在准备云端语音评测...';
     });
 
     final assessment = await ref
@@ -221,8 +220,8 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
       _latestReport = assessment.report;
       _sessionAttempts.insert(0, assessment.attempt);
       _submissionStatus = assessment.attempt.source == SpeechAttemptSource.cloud
-          ? 'Cloud speech assessment saved. The latest report is now tied to this prompt.'
-          : 'Cloud speech assessment was unavailable, so the app kept the local fallback feedback for this attempt.';
+          ? '云端评测已保存，本次练习的反馈和测评报告已经更新。'
+          : '云端评测暂时不可用，这一轮已保留为本地回退反馈。';
     });
   }
 
@@ -273,22 +272,19 @@ class _SpeechFeedbackSummary extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Structured feedback',
+                  '本次学习反馈',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
-              V2Pill(
-                label: '$coveragePercent% coverage',
-                color: AppColors.primary,
-              ),
+              V2Pill(label: '覆盖率 $coveragePercent%', color: AppColors.primary),
             ],
           ),
           const SizedBox(height: 10),
           Text(
             feedback.teacherExplanation,
-            style: const TextStyle(fontSize: 14, height: 1.55),
+            style: const TextStyle(fontSize: 14, height: 1.6),
           ),
           const SizedBox(height: 10),
           Wrap(
@@ -304,9 +300,7 @@ class _SpeechFeedbackSummary extends StatelessWidget {
                 color: AppColors.accentOrange,
               ),
               V2Pill(
-                label: feedback.fallbackUsed
-                    ? 'Local fallback'
-                    : 'Cloud assessed',
+                label: feedback.fallbackUsed ? '本地回退' : '云端评测',
                 color: feedback.fallbackUsed
                     ? AppColors.textSecondary
                     : AppColors.secondary,
@@ -316,7 +310,7 @@ class _SpeechFeedbackSummary extends StatelessWidget {
           if (feedback.weakWords.isNotEmpty) ...[
             const SizedBox(height: 12),
             Text(
-              'Weak words: ${feedback.weakWords.join(', ')}',
+              '不稳定词：${feedback.weakWords.join('、')}',
               style: const TextStyle(
                 fontSize: 13,
                 color: AppColors.textSecondary,
@@ -337,9 +331,7 @@ class _SpeechFeedbackSummary extends StatelessWidget {
           ],
           const SizedBox(height: 8),
           Text(
-            historyCount > 0
-                ? '$historyCount recent attempts are available for this prompt.'
-                : 'This is the latest attempt for this prompt.',
+            historyCount > 0 ? '这个练习已保留 $historyCount 条最近记录。' : '这是当前练习的最新结果。',
             style: const TextStyle(
               fontSize: 12,
               color: AppColors.textSecondary,
@@ -373,7 +365,7 @@ class _AssessmentReportSummary extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Assessment report',
+                  '测评报告',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w800,
                   ),
@@ -393,7 +385,7 @@ class _AssessmentReportSummary extends StatelessWidget {
             style: const TextStyle(
               fontSize: 13,
               color: AppColors.textSecondary,
-              height: 1.55,
+              height: 1.6,
             ),
           ),
           if (report.weakTargets.isNotEmpty) ...[
@@ -445,7 +437,7 @@ class _AttemptHistorySummary extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Recent attempts',
+            '最近记录',
             style: Theme.of(
               context,
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
@@ -467,7 +459,7 @@ class _AttemptHistorySummary extends StatelessWidget {
                   ),
                   V2Pill(
                     label:
-                        '${(attempt.feedback.coverageScore * 100).round()}% coverage',
+                        '覆盖率 ${(attempt.feedback.coverageScore * 100).round()}%',
                     color: AppColors.primary,
                   ),
                   const SizedBox(width: 8),

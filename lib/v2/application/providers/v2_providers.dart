@@ -83,7 +83,7 @@ final v2LearnerProfileProvider = Provider<LearnerProfileV2>((ref) {
   final storage = ref.watch(storageServiceProvider);
 
   return LearnerProfileV2(
-    displayName: auth.profile?.displayName ?? 'Learner',
+    displayName: auth.profile?.displayName ?? '学习者',
     goal: setup.goal,
     placementLevel: setup.placementLevel,
     accentPreference:

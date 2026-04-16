@@ -9,10 +9,7 @@ import '../widgets/v2_page_scaffold.dart';
 class LessonPlayerScreen extends ConsumerWidget {
   final String lessonId;
 
-  const LessonPlayerScreen({
-    super.key,
-    required this.lessonId,
-  });
+  const LessonPlayerScreen({super.key, required this.lessonId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -20,9 +17,7 @@ class LessonPlayerScreen extends ConsumerWidget {
 
     if (lesson == null) {
       return const Scaffold(
-        body: SafeArea(
-          child: Center(child: Text('Lesson not found.')),
-        ),
+        body: SafeArea(child: Center(child: Text('没有找到这节课程。'))),
       );
     }
 
@@ -33,7 +28,10 @@ class LessonPlayerScreen extends ConsumerWidget {
         subtitle: lesson.description,
         actions: [
           V2Pill(label: lesson.subtitle, color: AppColors.primary),
-          V2Pill(label: '${lesson.estimatedMinutes} min', color: AppColors.secondary),
+          V2Pill(
+            label: '${lesson.estimatedMinutes} 分钟',
+            color: AppColors.secondary,
+          ),
         ],
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

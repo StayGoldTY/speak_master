@@ -18,10 +18,13 @@ class TodayScreen extends ConsumerWidget {
     final progress = ref.watch(progressProvider);
 
     return V2PageScaffold(
-      title: 'Today',
-      subtitle: 'Your V2 loop keeps one lesson, one weak-point rebuild, and one speaking transfer task in motion.',
+      title: '今日学习',
+      subtitle: '把主线课、补弱训练和口语迁移排进同一条日计划，让每天的学习更稳、更有连续性。',
       actions: [
-        V2Pill(label: '${progress.streakDays} day streak', color: AppColors.streakFlame),
+        V2Pill(
+          label: '已坚持 ${progress.streakDays} 天',
+          color: AppColors.streakFlame,
+        ),
         V2Pill(label: '${progress.totalXp} XP', color: AppColors.xpGold),
       ],
       child: Column(
@@ -33,14 +36,14 @@ class TodayScreen extends ConsumerWidget {
                 children: [
                   const Expanded(
                     child: Text(
-                      'Finish onboarding so the daily plan can adapt to your goal and placement.',
-                      style: TextStyle(height: 1.55),
+                      '先完成学习设置，我们才能根据你的目标、水平和每日时长生成更合适的今日计划。',
+                      style: TextStyle(height: 1.6),
                     ),
                   ),
                   const SizedBox(width: 12),
                   FilledButton(
                     onPressed: () => context.go('/onboarding'),
-                    child: const Text('Resume'),
+                    child: const Text('继续完善'),
                   ),
                 ],
               ),
@@ -52,7 +55,14 @@ class TodayScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               gradient: AppColors.gradientPrimary,
-              borderRadius: BorderRadius.circular(28),
+              borderRadius: BorderRadius.circular(32),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.18),
+                  blurRadius: 28,
+                  offset: const Offset(0, 18),
+                ),
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -60,7 +70,7 @@ class TodayScreen extends ConsumerWidget {
                 Text(
                   plan.headline,
                   style: const TextStyle(
-                    fontSize: 28,
+                    fontSize: 30,
                     fontWeight: FontWeight.w800,
                     color: Colors.white,
                   ),
@@ -71,45 +81,99 @@ class TodayScreen extends ConsumerWidget {
                   style: const TextStyle(
                     fontSize: 14,
                     color: Colors.white70,
-                    height: 1.6,
+                    height: 1.7,
                   ),
                 ),
                 const SizedBox(height: 18),
-                V2Pill(
-                  label: '${learner.goal.title} • ${learner.placementLevel.title} • ${learner.accentPreference}',
-                  color: Colors.white,
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    V2Pill(label: learner.goal.title, color: Colors.white),
+                    V2Pill(
+                      label: learner.placementLevel.title,
+                      color: Colors.white,
+                    ),
+                    V2Pill(label: learner.accentLabel, color: Colors.white),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    _HeroMetric(
+                      label: '每日目标',
+                      value: '${learner.dailyMinutes} 分钟',
+                    ),
+                    _HeroMetric(
+                      label: '连续学习',
+                      value: '${progress.streakDays} 天',
+                    ),
+                    _HeroMetric(label: '当前积分', value: '${progress.totalXp} XP'),
+                  ],
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
           const V2SectionTitle(
-            title: 'Daily plan',
-            subtitle: 'Complete the cards in order to keep your pronunciation loop balanced.',
+            title: '今日任务',
+            subtitle: '建议按顺序完成，先进入主线，再补弱，最后做一次场景迁移。',
           ),
           ...plan.items.map(
             (item) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.only(bottom: 14),
               child: V2InfoCard(
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: _cardColor(item.route).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: Icon(
+                        _cardIcon(item.route),
+                        color: _cardColor(item.route),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(item.title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                          Text(
+                            item.title,
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
                           const SizedBox(height: 6),
                           Text(
                             item.subtitle,
-                            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.55),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                              height: 1.6,
+                            ),
                           ),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 12),
                           Wrap(
                             spacing: 8,
                             runSpacing: 8,
                             children: [
-                              V2Pill(label: '${item.estimatedMinutes} min', color: AppColors.primary),
-                              V2Pill(label: '+${item.xpReward} XP', color: AppColors.secondary),
+                              V2Pill(
+                                label: '${item.estimatedMinutes} 分钟',
+                                color: AppColors.primary,
+                              ),
+                              V2Pill(
+                                label: '+${item.xpReward} XP',
+                                color: AppColors.secondary,
+                              ),
                             ],
                           ),
                         ],
@@ -118,11 +182,69 @@ class TodayScreen extends ConsumerWidget {
                     const SizedBox(width: 12),
                     FilledButton(
                       onPressed: () => context.push(item.route),
-                      child: const Text('Start'),
+                      child: const Text('开始'),
                     ),
                   ],
                 ),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _cardIcon(String route) {
+    if (route.startsWith('/lesson')) {
+      return Icons.menu_book_rounded;
+    }
+    if (route.startsWith('/speaking')) {
+      return Icons.multitrack_audio_rounded;
+    }
+    return Icons.play_circle_outline_rounded;
+  }
+
+  Color _cardColor(String route) {
+    if (route.startsWith('/lesson')) {
+      return AppColors.primary;
+    }
+    if (route.startsWith('/speaking')) {
+      return AppColors.secondary;
+    }
+    return AppColors.accent;
+  }
+}
+
+class _HeroMetric extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _HeroMetric({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 132),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12, color: Colors.white70),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
             ),
           ),
         ],

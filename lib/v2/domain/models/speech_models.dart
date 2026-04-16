@@ -7,9 +7,9 @@ extension FluencyBandX on FluencyBand {
   String get key => name;
 
   String get label => switch (this) {
-    FluencyBand.emerging => 'Emerging',
-    FluencyBand.steady => 'Steady',
-    FluencyBand.confident => 'Confident',
+    FluencyBand.emerging => '还需加强',
+    FluencyBand.steady => '逐渐稳定',
+    FluencyBand.confident => '比较自然',
   };
 
   static FluencyBand fromKey(String? value) {
@@ -26,9 +26,9 @@ extension PaceBandX on PaceBand {
   String get key => name;
 
   String get label => switch (this) {
-    PaceBand.tooSlow => 'A little segmented',
-    PaceBand.balanced => 'Balanced pace',
-    PaceBand.tooFast => 'A little fast',
+    PaceBand.tooSlow => '节奏偏慢',
+    PaceBand.balanced => '节奏合适',
+    PaceBand.tooFast => '节奏偏快',
   };
 
   static PaceBand fromKey(String? value) {
@@ -61,8 +61,8 @@ extension SpeechAttemptSourceX on SpeechAttemptSource {
   };
 
   String get label => switch (this) {
-    SpeechAttemptSource.cloud => 'Cloud assessed',
-    SpeechAttemptSource.localFallback => 'Local fallback',
+    SpeechAttemptSource.cloud => '云端评测',
+    SpeechAttemptSource.localFallback => '本地回退',
   };
 
   static SpeechAttemptSource fromKey(String? value) {
