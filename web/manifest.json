@@ -1,11 +1,11 @@
 {
-    "name": "Speak Master",
-    "short_name": "SpeakMaster",
+    "name": "声临其境 Speak Master",
+    "short_name": "声临其境",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#F3F6F8",
-    "theme_color": "#143A5A",
-    "description": "English pronunciation learning with a clear main track, contrast drills, and honest self-practice.",
+    "background_color": "#F8F4EE",
+    "theme_color": "#114B6B",
+    "description": "面向中国学习者的英语发音与口语学习平台，提供中文引导、标准发音、录音反馈和结构化练习。",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
