@@ -23,6 +23,10 @@ class StorageService {
   static const _keyReminderEnabled = 'reminder_enabled';
   static const _keyReminderHour = 'reminder_hour';
   static const _keyReminderMinute = 'reminder_minute';
+  static const _keyV2OnboardingComplete = 'v2_onboarding_complete';
+  static const _keyV2LearningGoal = 'v2_learning_goal';
+  static const _keyV2PlacementLevel = 'v2_placement_level';
+  static const _keyV2DailyMinutes = 'v2_daily_minutes';
 
   SharedPreferences? _prefs;
 
@@ -105,6 +109,68 @@ class StorageService {
       _prefs!.setInt(_keyReminderHour, preference.hour),
       _prefs!.setInt(_keyReminderMinute, preference.minute),
     ]);
+  }
+
+  bool loadV2OnboardingComplete() {
+    final prefs = _prefs;
+    if (prefs == null) {
+      return false;
+    }
+
+    return prefs.getBool(_keyV2OnboardingComplete) ?? false;
+  }
+
+  Future<void> saveV2OnboardingComplete(bool value) async {
+    await init();
+    await _prefs!.setBool(_keyV2OnboardingComplete, value);
+  }
+
+  String loadV2LearningGoal({
+    String fallback = 'pronunciationConfidence',
+  }) {
+    final prefs = _prefs;
+    if (prefs == null) {
+      return fallback;
+    }
+
+    return prefs.getString(_keyV2LearningGoal) ?? fallback;
+  }
+
+  Future<void> saveV2LearningGoal(String value) async {
+    await init();
+    await _prefs!.setString(_keyV2LearningGoal, value);
+  }
+
+  String loadV2PlacementLevel({
+    String fallback = 'starter',
+  }) {
+    final prefs = _prefs;
+    if (prefs == null) {
+      return fallback;
+    }
+
+    return prefs.getString(_keyV2PlacementLevel) ?? fallback;
+  }
+
+  Future<void> saveV2PlacementLevel(String value) async {
+    await init();
+    await _prefs!.setString(_keyV2PlacementLevel, value);
+  }
+
+  int loadV2DailyMinutes({
+    int fallback = 15,
+  }) {
+    final prefs = _prefs;
+    if (prefs == null) {
+      return fallback;
+    }
+
+    return prefs.getInt(_keyV2DailyMinutes) ?? fallback;
+  }
+
+  Future<void> saveV2DailyMinutes(int value) async {
+    await init();
+    await _prefs!.setInt(_keyV2DailyMinutes, value);
   }
 }
 

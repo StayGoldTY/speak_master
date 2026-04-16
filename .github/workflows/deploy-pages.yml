@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - main
   workflow_dispatch:
 
 permissions:
@@ -36,8 +37,8 @@ jobs:
       - name: Analyze
         run: flutter analyze
 
-      - name: Run widget tests
-        run: flutter test test/widget_test.dart
+      - name: Run test suite
+        run: flutter test
 
       - name: Compute base href
         id: base_href

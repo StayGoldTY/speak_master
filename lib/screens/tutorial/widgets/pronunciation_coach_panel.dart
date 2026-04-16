@@ -25,6 +25,11 @@ class PronunciationCoachPanel extends ConsumerStatefulWidget {
   final Color accentColor;
   final PronunciationCoachMode mode;
   final ValueChanged<PronunciationCheckResult>? onCheckCompleted;
+  final Future<void> Function(
+    PronunciationCheckResult result,
+    LearnerRecording? recording,
+  )?
+  onAttemptReady;
 
   const PronunciationCoachPanel({
     super.key,
@@ -36,6 +41,7 @@ class PronunciationCoachPanel extends ConsumerStatefulWidget {
     this.description,
     this.emptyReferenceText,
     this.onCheckCompleted,
+    this.onAttemptReady,
     required this.accentColor,
     required this.mode,
   }) : assert(
@@ -202,9 +208,7 @@ class _PronunciationCoachPanelState
                     ? Icons.stop_circle_outlined
                     : Icons.fiber_manual_record_rounded,
               ),
-              label: Text(
-                _isRecordingLearnerVoice ? '停止并保存录音' : '录自己的声音',
-              ),
+              label: Text(_isRecordingLearnerVoice ? '停止并保存录音' : '录自己的声音'),
             ),
             OutlinedButton.icon(
               onPressed: _learnerRecording == null
@@ -215,15 +219,15 @@ class _PronunciationCoachPanelState
                     ? Icons.stop_circle_outlined
                     : Icons.play_circle_outline_rounded,
               ),
-              label: Text(
-                _isPlayingLearnerRecording ? '停止回放录音' : '回放我的录音',
-              ),
+              label: Text(_isPlayingLearnerRecording ? '停止回放录音' : '回放我的录音'),
             ),
             OutlinedButton.icon(
               onPressed:
-                  hasReferenceText || _transcript.isNotEmpty || _checkResult != null
-                      ? _resetCheck
-                      : null,
+                  hasReferenceText ||
+                      _transcript.isNotEmpty ||
+                      _checkResult != null
+                  ? _resetCheck
+                  : null,
               icon: const Icon(Icons.refresh_rounded),
               label: const Text('清空本轮反馈'),
             ),
@@ -256,8 +260,7 @@ class _PronunciationCoachPanelState
             backgroundColor: AppColors.bgLight,
             textColor: AppColors.textSecondary,
             icon: Icons.menu_book_outlined,
-            text:
-                widget.emptyReferenceText ?? '当前这一步还没有可朗读的参考文本。',
+            text: widget.emptyReferenceText ?? '当前这一步还没有可朗读的参考文本。',
           ),
         ],
         if (_focusWords.isNotEmpty) ...[
@@ -677,8 +680,7 @@ class _PronunciationCoachPanelState
     final transcript = await _practiceService.stopListening();
     _finalizeRecognitionSession(
       transcriptOverride: transcript,
-      statusMessage:
-          transcript.isEmpty ? '已停止识别，但没有抓到有效英文。' : '识别已停止，已生成自动检查。',
+      statusMessage: transcript.isEmpty ? '已停止识别，但没有抓到有效英文。' : '识别已停止，已生成自动检查。',
     );
   }
 
@@ -693,8 +695,9 @@ class _PronunciationCoachPanelState
 
     if (result.finalResult) {
       _finalizeRecognitionSession(
-        statusMessage:
-            _transcript.isEmpty ? '识别结束，但还没有拿到有效英文。' : '识别结束，已生成自动检查。',
+        statusMessage: _transcript.isEmpty
+            ? '识别结束，但还没有拿到有效英文。'
+            : '识别结束，已生成自动检查。',
       );
     }
   }
@@ -720,8 +723,9 @@ class _PronunciationCoachPanelState
     final normalized = status.toLowerCase();
     if (normalized.contains('notlistening') || normalized.contains('done')) {
       _finalizeRecognitionSession(
-        statusMessage:
-            _transcript.isEmpty ? '识别结束，但还没有拿到有效英文。' : '识别结束，已生成自动检查。',
+        statusMessage: _transcript.isEmpty
+            ? '识别结束，但还没有拿到有效英文。'
+            : '识别结束，已生成自动检查。',
       );
     }
   }
@@ -758,6 +762,7 @@ class _PronunciationCoachPanelState
 
     if (result.hasTranscript) {
       widget.onCheckCompleted?.call(result);
+      unawaited(widget.onAttemptReady?.call(result, _learnerRecording));
     }
   }
 
