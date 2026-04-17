@@ -44,9 +44,11 @@ class V2ShellScaffold extends StatelessWidget {
       extendBody: true,
       body: child,
       bottomNavigationBar: SafeArea(
+        top: false,
         minimum: const EdgeInsets.fromLTRB(14, 0, 14, 14),
         child: Align(
           alignment: Alignment.bottomCenter,
+          heightFactor: 1,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 760),
             child: DecoratedBox(
