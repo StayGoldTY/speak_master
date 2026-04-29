@@ -31,6 +31,7 @@ class SpeakingPromptCard extends ConsumerStatefulWidget {
 class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
   SpeechFeedback? _latestFeedback;
   SpeechAssessmentReport? _latestReport;
+  _ActivePronunciationMaterial? _activeMaterial;
   final List<SpeakingAttemptRecord> _sessionAttempts = [];
   bool _isSubmitting = false;
   String? _submissionStatus;
@@ -43,6 +44,18 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
     );
     final history = _mergeHistory(persistedHistory.valueOrNull ?? const []);
     final drillRoute = PronunciationDrillRouteBuilder.build(widget.prompt);
+    final activeReferenceText =
+        _activeMaterial?.text ?? widget.prompt.referenceText;
+    final activeFocusWords = _activeMaterial == null
+        ? widget.prompt.focusWords
+        : _focusWordsFor(_activeMaterial!);
+    final activeCoachTitle = _activeMaterial == null
+        ? widget.prompt.title
+        : '当前练习：${_activeMaterial!.stage.title}';
+    final activeCoachDescription = _activeMaterial == null
+        ? widget.prompt.instruction
+        : '${_activeMaterial!.stage.helper} ${widget.prompt.instruction}'
+              .trim();
 
     return Container(
       key: widget.highlighted
@@ -129,9 +142,19 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
             ],
             const SizedBox(height: 14),
             _PronunciationRouteSection(
+              promptId: widget.prompt.id,
               stages: drillRoute,
               accentColor: widget.accentColor,
+              selectedText: activeReferenceText,
+              onSelectItem: _selectRouteMaterial,
             ),
+            if (_activeMaterial != null) ...[
+              const SizedBox(height: 10),
+              V2Pill(
+                label: '已切到：${_activeMaterial!.text}',
+                color: widget.accentColor,
+              ),
+            ],
             if (widget.prompt.warmupWords.isNotEmpty) ...[
               const SizedBox(height: 14),
               _DrillSection(
@@ -168,11 +191,14 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
               ),
             ),
             PronunciationCoachPanel(
+              key: ValueKey(
+                'speaking-coach-${widget.prompt.id}-$activeReferenceText',
+              ),
               panelId: widget.prompt.id,
-              referenceText: widget.prompt.referenceText,
-              focusWords: widget.prompt.focusWords,
-              title: widget.prompt.title,
-              description: widget.prompt.instruction,
+              referenceText: activeReferenceText,
+              focusWords: activeFocusWords,
+              title: activeCoachTitle,
+              description: activeCoachDescription,
               accentColor: widget.accentColor,
               mode: _coachMode(widget.prompt.kind),
               onCheckCompleted: _handleLocalCheck,
@@ -217,6 +243,40 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
         ),
       ),
     );
+  }
+
+  void _selectRouteMaterial(PronunciationDrillStage stage, String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      _activeMaterial = _ActivePronunciationMaterial(
+        stage: stage,
+        text: trimmed,
+      );
+      _latestFeedback = null;
+      _latestReport = null;
+      _submissionStatus = null;
+    });
+  }
+
+  List<String> _focusWordsFor(_ActivePronunciationMaterial material) {
+    if (material.stage.kind == PronunciationDrillStageKind.listen ||
+        material.stage.kind == PronunciationDrillStageKind.word) {
+      return [material.text];
+    }
+
+    final normalizedText = material.text.toLowerCase();
+    final matchedPromptFocusWords = widget.prompt.focusWords
+        .where((word) => normalizedText.contains(word.toLowerCase()))
+        .toList();
+    if (matchedPromptFocusWords.isNotEmpty) {
+      return matchedPromptFocusWords;
+    }
+
+    return PronunciationCheckEngine.extractFocusWordsFromText(material.text);
   }
 
   PronunciationCoachMode _coachMode(ActivityKind kind) {
@@ -319,12 +379,18 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
 }
 
 class _PronunciationRouteSection extends StatelessWidget {
+  final String promptId;
   final List<PronunciationDrillStage> stages;
   final Color accentColor;
+  final String selectedText;
+  final void Function(PronunciationDrillStage stage, String text) onSelectItem;
 
   const _PronunciationRouteSection({
+    required this.promptId,
     required this.stages,
     required this.accentColor,
+    required this.selectedText,
+    required this.onSelectItem,
   });
 
   @override
@@ -353,8 +419,11 @@ class _PronunciationRouteSection extends StatelessWidget {
           children: stages
               .map(
                 (stage) => _PronunciationRouteStageChip(
+                  promptId: promptId,
                   stage: stage,
                   accentColor: accentColor,
+                  selectedText: selectedText,
+                  onSelectItem: onSelectItem,
                 ),
               )
               .toList(),
@@ -365,12 +434,18 @@ class _PronunciationRouteSection extends StatelessWidget {
 }
 
 class _PronunciationRouteStageChip extends StatelessWidget {
+  final String promptId;
   final PronunciationDrillStage stage;
   final Color accentColor;
+  final String selectedText;
+  final void Function(PronunciationDrillStage stage, String text) onSelectItem;
 
   const _PronunciationRouteStageChip({
+    required this.promptId,
     required this.stage,
     required this.accentColor,
+    required this.selectedText,
+    required this.onSelectItem,
   });
 
   @override
@@ -417,7 +492,22 @@ class _PronunciationRouteStageChip extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            V2Pill(label: '${stage.items.length} 项', color: accentColor),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final entry in stage.items.indexed.take(3))
+                  _RouteItemButton(
+                    key: ValueKey(
+                      'speaking-route-item-$promptId-${stage.kind.name}-${entry.$1}',
+                    ),
+                    label: entry.$2,
+                    selected: entry.$2 == selectedText,
+                    accentColor: accentColor,
+                    onTap: () => onSelectItem(stage, entry.$2),
+                  ),
+              ],
+            ),
           ],
         ),
       ),
@@ -432,6 +522,73 @@ class _PronunciationRouteStageChip extends StatelessWidget {
       PronunciationDrillStageKind.sentence => Icons.notes_rounded,
       PronunciationDrillStageKind.transfer => Icons.auto_awesome_rounded,
     };
+  }
+}
+
+class _ActivePronunciationMaterial {
+  final PronunciationDrillStage stage;
+  final String text;
+
+  const _ActivePronunciationMaterial({required this.stage, required this.text});
+}
+
+class _RouteItemButton extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final Color accentColor;
+  final VoidCallback onTap;
+
+  const _RouteItemButton({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.accentColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
+            color: selected ? accentColor : accentColor.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: accentColor.withValues(alpha: 0.14)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                selected
+                    ? Icons.check_circle_rounded
+                    : Icons.play_arrow_rounded,
+                size: 16,
+                color: selected ? Colors.white : accentColor,
+              ),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: selected ? Colors.white : accentColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

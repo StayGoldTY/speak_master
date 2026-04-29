@@ -162,13 +162,35 @@ void main() {
         expect(find.text('短语连读'), findsWidgets);
         expect(find.text('自然变体开口'), findsWidgets);
         expect(find.text('today'), findsWidgets);
-        expect(find.text('speak clearly'), findsOneWidget);
+        expect(find.text('speak clearly'), findsWidgets);
         expect(
           find.text('Today I will speak slowly and clearly.'),
-          findsOneWidget,
+          findsWidgets,
         );
       },
     );
+
+    testWidgets('route items switch the active coach material', (tester) async {
+      await tester.pumpWidget(buildApp());
+      await tester.pumpAndSettle();
+
+      final reference = find.byKey(const ValueKey('speech-reference-shadow-1'));
+      expect(
+        tester.widget<Text>(reference).data,
+        'Today I will speak clearly and confidently.',
+      );
+
+      final wordRouteItem = find.byKey(
+        const ValueKey('speaking-route-item-shadow-1-word-1'),
+      );
+      await tester.ensureVisible(wordRouteItem);
+      await tester.tap(wordRouteItem);
+      await tester.pumpAndSettle();
+
+      expect(find.text('当前练习：再单练'), findsOneWidget);
+      expect(tester.widget<Text>(reference).data, 'clearly');
+      expect(find.text('已切到：clearly'), findsOneWidget);
+    });
 
     testWidgets(
       'focuses a prompt from the route and quick-start highlights it',
