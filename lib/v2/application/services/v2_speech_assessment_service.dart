@@ -79,7 +79,7 @@ class V2SpeechAssessmentService {
   }) {
     final feedback = _feedbackEngine.build(
       result: localResult,
-      focusWords: prompt.focusWords,
+      prompt: prompt,
       fallbackUsed: true,
     );
     final report = _reportBuilder.build(

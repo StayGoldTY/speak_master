@@ -60,16 +60,14 @@ class PronunciationCheckEngine {
       'Either step or referenceText must be provided.',
     );
 
-    final resolvedReferenceText =
-        referenceText?.trim().isNotEmpty == true
-            ? referenceText!.trim()
-            : buildReferenceText(step!);
-    final resolvedFocusWords =
-        focusWords != null && focusWords.isNotEmpty
-            ? _uniqueTokens(focusWords.expand((item) => _tokenize(item)).toList())
-            : step != null
-            ? extractFocusWords(step)
-            : extractFocusWordsFromText(resolvedReferenceText);
+    final resolvedReferenceText = referenceText?.trim().isNotEmpty == true
+        ? referenceText!.trim()
+        : buildReferenceText(step!);
+    final resolvedFocusWords = focusWords != null && focusWords.isNotEmpty
+        ? _uniqueTokens(focusWords.expand((item) => _tokenize(item)).toList())
+        : step != null
+        ? extractFocusWords(step)
+        : extractFocusWordsFromText(resolvedReferenceText);
 
     final expectedWords = _uniqueTokens(_tokenize(resolvedReferenceText));
     final spokenWords = _uniqueTokens(_tokenize(transcript));
@@ -94,7 +92,7 @@ class PronunciationCheckEngine {
       if (transcript.trim().isEmpty)
         '还没有识别到有效英文，先检查浏览器麦克风权限、环境噪音和说话音量。'
       else if (recognitionCoverage < 0.35)
-        '识别覆盖较低，建议先放慢语速，只读一组词或一句短句。'
+        '识别线索较低，建议先放慢语速，只读一组词或一句短句。'
       else if (recognitionCoverage < 0.72)
         '句子主体已经被部分识别，下一轮优先把缺失的关键词说完整。'
       else

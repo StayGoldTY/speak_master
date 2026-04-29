@@ -31,9 +31,8 @@ class V2Router {
       GoRoute(
         path: '/auth',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => AuthScreen(
-          redirectTo: state.uri.queryParameters['from'],
-        ),
+        builder: (context, state) =>
+            AuthScreen(redirectTo: state.uri.queryParameters['from']),
       ),
       ShellRoute(
         navigatorKey: _shellNavigatorKey,
@@ -51,8 +50,11 @@ class V2Router {
           ),
           GoRoute(
             path: '/speaking',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: SpeakingHubScreen()),
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: SpeakingHubScreen(
+                focusPromptId: state.uri.queryParameters['prompt'],
+              ),
+            ),
           ),
           GoRoute(
             path: '/progress',
@@ -69,9 +71,8 @@ class V2Router {
       GoRoute(
         path: '/lesson/:lessonId',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => LessonPlayerScreen(
-          lessonId: state.pathParameters['lessonId']!,
-        ),
+        builder: (context, state) =>
+            LessonPlayerScreen(lessonId: state.pathParameters['lessonId']!),
       ),
       GoRoute(
         path: '/ops',

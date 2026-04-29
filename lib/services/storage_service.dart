@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/user_progress.dart';
@@ -16,6 +18,8 @@ class StorageService {
   static const _keyCompletedLessons = 'completed_lessons';
   static const _keyCompletedUnits = 'completed_units';
   static const _keyEarnedBadges = 'earned_badges';
+  static const _keyPhonemeScores = 'phoneme_scores';
+  static const _keyPronunciationReviewEntries = 'pronunciation_review_entries';
   static const _keyIsPro = 'is_pro';
   static const _keyTodayAssessments = 'today_assessments';
   static const _keyStreakFreeze = 'streak_freeze';
@@ -31,7 +35,7 @@ class StorageService {
   SharedPreferences? _prefs;
 
   Future<void> init() async {
-    _prefs ??= await SharedPreferences.getInstance();
+    _prefs = await SharedPreferences.getInstance();
   }
 
   UserProgress loadProgress() {
@@ -48,10 +52,16 @@ class StorageService {
       totalXp: prefs.getInt(_keyTotalXp) ?? 0,
       level: prefs.getInt(_keyLevel) ?? 1,
       todayAssessmentCount: prefs.getInt(_keyTodayAssessments) ?? 0,
-      lastActiveDate: lastActive != null && lastActive.isNotEmpty ? DateTime.tryParse(lastActive) : null,
-      completedLessons: (prefs.getStringList(_keyCompletedLessons) ?? const []).toSet(),
-      completedUnits: (prefs.getStringList(_keyCompletedUnits) ?? const []).toSet(),
+      lastActiveDate: lastActive != null && lastActive.isNotEmpty
+          ? DateTime.tryParse(lastActive)
+          : null,
+      completedLessons: (prefs.getStringList(_keyCompletedLessons) ?? const [])
+          .toSet(),
+      completedUnits: (prefs.getStringList(_keyCompletedUnits) ?? const [])
+          .toSet(),
       earnedBadges: (prefs.getStringList(_keyEarnedBadges) ?? const []).toSet(),
+      phonemeScores: _loadPhonemeScores(prefs),
+      pronunciationReviewEntries: _loadPronunciationReviewEntries(prefs),
       isPro: prefs.getBool(_keyIsPro) ?? false,
       streakFreezeRemaining: prefs.getInt(_keyStreakFreeze) ?? 1,
     );
@@ -66,10 +76,23 @@ class StorageService {
       prefs.setInt(_keyTotalXp, progress.totalXp),
       prefs.setInt(_keyLevel, progress.level),
       prefs.setInt(_keyTodayAssessments, progress.todayAssessmentCount),
-      prefs.setString(_keyLastActive, progress.lastActiveDate?.toIso8601String() ?? ''),
-      prefs.setStringList(_keyCompletedLessons, progress.completedLessons.toList()),
+      prefs.setString(
+        _keyLastActive,
+        progress.lastActiveDate?.toIso8601String() ?? '',
+      ),
+      prefs.setStringList(
+        _keyCompletedLessons,
+        progress.completedLessons.toList(),
+      ),
       prefs.setStringList(_keyCompletedUnits, progress.completedUnits.toList()),
       prefs.setStringList(_keyEarnedBadges, progress.earnedBadges.toList()),
+      prefs.setString(_keyPhonemeScores, jsonEncode(progress.phonemeScores)),
+      prefs.setStringList(
+        _keyPronunciationReviewEntries,
+        progress.pronunciationReviewEntries
+            .map((entry) => jsonEncode(entry.toJson()))
+            .toList(),
+      ),
       prefs.setBool(_keyIsPro, progress.isPro),
       prefs.setInt(_keyStreakFreeze, progress.streakFreezeRemaining),
     ]);
@@ -125,9 +148,7 @@ class StorageService {
     await _prefs!.setBool(_keyV2OnboardingComplete, value);
   }
 
-  String loadV2LearningGoal({
-    String fallback = 'pronunciationConfidence',
-  }) {
+  String loadV2LearningGoal({String fallback = 'pronunciationConfidence'}) {
     final prefs = _prefs;
     if (prefs == null) {
       return fallback;
@@ -141,9 +162,7 @@ class StorageService {
     await _prefs!.setString(_keyV2LearningGoal, value);
   }
 
-  String loadV2PlacementLevel({
-    String fallback = 'starter',
-  }) {
+  String loadV2PlacementLevel({String fallback = 'starter'}) {
     final prefs = _prefs;
     if (prefs == null) {
       return fallback;
@@ -157,9 +176,7 @@ class StorageService {
     await _prefs!.setString(_keyV2PlacementLevel, value);
   }
 
-  int loadV2DailyMinutes({
-    int fallback = 15,
-  }) {
+  int loadV2DailyMinutes({int fallback = 15}) {
     final prefs = _prefs;
     if (prefs == null) {
       return fallback;
@@ -171,6 +188,51 @@ class StorageService {
   Future<void> saveV2DailyMinutes(int value) async {
     await init();
     await _prefs!.setInt(_keyV2DailyMinutes, value);
+  }
+
+  Map<String, double> _loadPhonemeScores(SharedPreferences prefs) {
+    final raw = prefs.getString(_keyPhonemeScores);
+    if (raw == null || raw.trim().isEmpty) {
+      return const {};
+    }
+
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) {
+        return const {};
+      }
+
+      return decoded.map(
+        (key, value) =>
+            MapEntry(key.toString(), (value as num?)?.toDouble() ?? 0),
+      );
+    } catch (_) {
+      return const {};
+    }
+  }
+
+  List<PronunciationReviewEntry> _loadPronunciationReviewEntries(
+    SharedPreferences prefs,
+  ) {
+    final rawEntries =
+        prefs.getStringList(_keyPronunciationReviewEntries) ?? const [];
+
+    return rawEntries
+        .map((raw) {
+          try {
+            final decoded = jsonDecode(raw);
+            if (decoded is Map) {
+              return PronunciationReviewEntry.fromJson(
+                decoded.map((key, value) => MapEntry(key.toString(), value)),
+              );
+            }
+          } catch (_) {
+            return null;
+          }
+          return null;
+        })
+        .whereType<PronunciationReviewEntry>()
+        .toList();
   }
 }
 
@@ -191,11 +253,7 @@ class ReminderPreference {
     return '$hh:$mm';
   }
 
-  ReminderPreference copyWith({
-    bool? enabled,
-    int? hour,
-    int? minute,
-  }) {
+  ReminderPreference copyWith({bool? enabled, int? hour, int? minute}) {
     return ReminderPreference(
       enabled: enabled ?? this.enabled,
       hour: hour ?? this.hour,

@@ -28,7 +28,7 @@ class LocalAssessmentReportBuilder {
     return SpeechAssessmentReport(
       overallLabel: overallLabel,
       overview:
-          '识别覆盖率约 ${(feedback.coverageScore * 100).round()}%。$weakSummary ${feedback.teacherExplanation}',
+          '本轮识别线索约 ${(feedback.coverageScore * 100).round()}%。$weakSummary ${feedback.teacherExplanation}',
       weakTargets: weakTargets,
       nextSteps: nextSteps,
       recommendedRoute: recommendedRoute,

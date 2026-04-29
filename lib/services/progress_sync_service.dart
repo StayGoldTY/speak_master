@@ -35,9 +35,9 @@ class ProgressSyncService {
           .eq('id', userId)
           .maybeSingle();
 
-      final progress = UserProgress.fromJson(data).copyWith(
-        isPro: profile?['is_pro'] as bool? ?? false,
-      );
+      final progress = UserProgress.fromJson(
+        data,
+      ).copyWith(isPro: profile?['is_pro'] as bool? ?? false);
 
       await _localStorage.saveProgress(progress);
       return progress;
@@ -122,20 +122,43 @@ class ProgressSyncService {
   UserProgress _mergeProgress(UserProgress local, UserProgress cloud) {
     return UserProgress(
       userId: _userId ?? local.userId,
-      streakDays: local.streakDays > cloud.streakDays ? local.streakDays : cloud.streakDays,
+      streakDays: local.streakDays > cloud.streakDays
+          ? local.streakDays
+          : cloud.streakDays,
       totalXp: local.totalXp > cloud.totalXp ? local.totalXp : cloud.totalXp,
       level: local.level > cloud.level ? local.level : cloud.level,
-      todayAssessmentCount: local.todayAssessmentCount > cloud.todayAssessmentCount
-          ? local.todayAssessmentCount : cloud.todayAssessmentCount,
+      todayAssessmentCount:
+          local.todayAssessmentCount > cloud.todayAssessmentCount
+          ? local.todayAssessmentCount
+          : cloud.todayAssessmentCount,
       lastActiveDate: _laterDate(local.lastActiveDate, cloud.lastActiveDate),
       completedLessons: {...local.completedLessons, ...cloud.completedLessons},
       completedUnits: {...local.completedUnits, ...cloud.completedUnits},
       earnedBadges: {...local.earnedBadges, ...cloud.earnedBadges},
       phonemeScores: {...cloud.phonemeScores, ...local.phonemeScores},
-      streakFreezeRemaining: local.streakFreezeRemaining > cloud.streakFreezeRemaining
-          ? local.streakFreezeRemaining : cloud.streakFreezeRemaining,
+      pronunciationReviewEntries: _mergeReviewEntries(
+        local.pronunciationReviewEntries,
+        cloud.pronunciationReviewEntries,
+      ),
+      streakFreezeRemaining:
+          local.streakFreezeRemaining > cloud.streakFreezeRemaining
+          ? local.streakFreezeRemaining
+          : cloud.streakFreezeRemaining,
       isPro: local.isPro || cloud.isPro,
     );
+  }
+
+  List<PronunciationReviewEntry> _mergeReviewEntries(
+    List<PronunciationReviewEntry> local,
+    List<PronunciationReviewEntry> cloud,
+  ) {
+    final merged = <String, PronunciationReviewEntry>{};
+    for (final entry in [...cloud, ...local]) {
+      merged[entry.id] = entry;
+    }
+    final values = merged.values.toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return values.take(20).toList();
   }
 
   DateTime? _laterDate(DateTime? a, DateTime? b) {

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/progress_provider.dart';
 import '../../../providers/service_providers.dart';
-import '../../../services/storage_service.dart';
 import '../../domain/models/course_models.dart';
 import '../../domain/models/learner_models.dart';
 import '../../domain/models/speech_models.dart';
@@ -18,15 +17,26 @@ class V2LearnerSetupNotifier extends StateNotifier<V2LearnerSetupState> {
 
   V2LearnerSetupNotifier(this._ref)
     : super(
-        V2LearnerSetupState(
-          goal: LearningGoalX.fromKey(StorageService().loadV2LearningGoal()),
-          placementLevel: PlacementLevelX.fromKey(
-            StorageService().loadV2PlacementLevel(),
-          ),
-          dailyMinutes: StorageService().loadV2DailyMinutes(),
-          onboardingComplete: StorageService().loadV2OnboardingComplete(),
+        const V2LearnerSetupState(
+          goal: LearningGoal.pronunciationConfidence,
+          placementLevel: PlacementLevel.starter,
+          dailyMinutes: 15,
+          onboardingComplete: false,
         ),
-      );
+      ) {
+    _loadInitial();
+  }
+
+  Future<void> _loadInitial() async {
+    final storage = _ref.read(storageServiceProvider);
+    await storage.init();
+    state = V2LearnerSetupState(
+      goal: LearningGoalX.fromKey(storage.loadV2LearningGoal()),
+      placementLevel: PlacementLevelX.fromKey(storage.loadV2PlacementLevel()),
+      dailyMinutes: storage.loadV2DailyMinutes(),
+      onboardingComplete: storage.loadV2OnboardingComplete(),
+    );
+  }
 
   Future<void> setGoal(LearningGoal goal) async {
     state = state.copyWith(goal: goal);
@@ -116,6 +126,7 @@ final v2DailyPlanProvider = Provider<DailyPlan>((ref) {
   return repo.buildDailyPlan(
     progress: progress,
     learnerName: learner.displayName,
+    learner: learner,
   );
 });
 

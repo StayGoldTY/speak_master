@@ -17,6 +17,7 @@ abstract class V2LearningRepository {
   DailyPlan buildDailyPlan({
     required UserProgress progress,
     required String learnerName,
+    required LearnerProfileV2 learner,
   });
 
   MasterySnapshot buildMasterySnapshot(UserProgress progress);

@@ -12,7 +12,10 @@ class ProgressNotifier extends StateNotifier<UserProgress> {
 
   Future<void> _loadInitial() async {
     try {
-      final progress = await _ref.read(progressSyncServiceProvider).loadProgress();
+      await _ref.read(storageServiceProvider).init();
+      final progress = await _ref
+          .read(progressSyncServiceProvider)
+          .loadProgress();
       state = progress;
     } catch (e) {
       debugPrint('Failed to load initial progress: $e');
@@ -89,10 +92,7 @@ class ProgressNotifier extends StateNotifier<UserProgress> {
 
     var updated = state.copyWith(
       todayAssessmentCount: state.todayAssessmentCount + 1,
-      phonemeScores: {
-        ...state.phonemeScores,
-        ...phonemeUpdates,
-      },
+      phonemeScores: {...state.phonemeScores, ...phonemeUpdates},
     );
 
     updated = gamService.addXp(updated, xp);
@@ -102,8 +102,49 @@ class ProgressNotifier extends StateNotifier<UserProgress> {
     state = updated;
     await syncService.saveProgress(updated);
   }
+
+  Future<void> recordSpeakingPractice({
+    int xp = 8,
+    bool countAssessment = false,
+    List<PronunciationReviewEntry> reviewEntries = const [],
+  }) async {
+    final syncService = _ref.read(progressSyncServiceProvider);
+    final gamService = _ref.read(gamificationServiceProvider);
+
+    var updated = state.copyWith(
+      todayAssessmentCount: countAssessment
+          ? state.todayAssessmentCount + 1
+          : state.todayAssessmentCount,
+      pronunciationReviewEntries: _mergeReviewEntries(
+        state.pronunciationReviewEntries,
+        reviewEntries,
+      ),
+    );
+
+    updated = gamService.addXp(updated, xp);
+    updated = gamService.updateStreak(updated);
+    updated = gamService.checkBadges(updated);
+
+    state = updated;
+    await syncService.saveProgress(updated);
+  }
+
+  List<PronunciationReviewEntry> _mergeReviewEntries(
+    List<PronunciationReviewEntry> existing,
+    List<PronunciationReviewEntry> incoming,
+  ) {
+    final merged = <String, PronunciationReviewEntry>{};
+    for (final entry in [...existing, ...incoming]) {
+      merged[entry.id] = entry;
+    }
+    final values = merged.values.toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return values.take(20).toList();
+  }
 }
 
-final progressProvider = StateNotifierProvider<ProgressNotifier, UserProgress>((ref) {
+final progressProvider = StateNotifierProvider<ProgressNotifier, UserProgress>((
+  ref,
+) {
   return ProgressNotifier(ref);
 });

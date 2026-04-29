@@ -102,6 +102,11 @@ class SpeakingPrompt {
   final String referenceText;
   final List<String> focusWords;
   final List<String> checklist;
+  final List<String> warmupWords;
+  final List<String> phraseDrills;
+  final List<String> sentenceVariations;
+  final String rhythmCue;
+  final String extensionPrompt;
 
   const SpeakingPrompt({
     required this.id,
@@ -112,6 +117,11 @@ class SpeakingPrompt {
     required this.referenceText,
     required this.focusWords,
     required this.checklist,
+    this.warmupWords = const [],
+    this.phraseDrills = const [],
+    this.sentenceVariations = const [],
+    this.rhythmCue = '',
+    this.extensionPrompt = '',
   });
 }
 

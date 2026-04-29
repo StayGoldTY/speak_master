@@ -8,6 +8,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../models/lesson.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/service_providers.dart';
+import '../../../services/pronunciation_audio_assets.dart';
 import '../../../services/pronunciation_check_engine.dart';
 import '../../../services/pronunciation_practice_service.dart';
 import '../../../widgets/record_button.dart';
@@ -69,6 +70,7 @@ class _PronunciationCoachPanelState
   bool _isRecordingLearnerVoice = false;
   bool _isPlayingLearnerRecording = false;
   bool _didFinalizeCurrentSession = false;
+  PronunciationVoiceGender _voiceGender = PronunciationVoiceGender.neutral;
 
   Duration _recordingElapsed = Duration.zero;
   String _transcript = '';
@@ -174,7 +176,7 @@ class _PronunciationCoachPanelState
         ),
         const SizedBox(height: 12),
         Text(
-          '当前参考口音：$accentLabel。$_panelDescription',
+          '当前参考口音：$accentLabel。内置参考音频会优先播放；没有内置音频时，会用优化后的分段 TTS 兜底。$_panelDescription',
           style: const TextStyle(
             fontSize: 13,
             color: AppColors.textSecondary,
@@ -187,13 +189,37 @@ class _PronunciationCoachPanelState
           runSpacing: 10,
           children: [
             FilledButton.icon(
-              onPressed: hasReferenceText ? _toggleReferencePlayback : null,
+              key: ValueKey('speech-play-normal-$_panelId'),
+              onPressed: hasReferenceText
+                  ? () => _toggleReferencePlayback()
+                  : null,
               icon: Icon(
                 _isSpeaking
                     ? Icons.stop_circle_outlined
                     : Icons.volume_up_rounded,
               ),
-              label: Text(_isSpeaking ? '停止参考音' : '播放标准发音'),
+              label: Text(_isSpeaking ? '停止参考音' : '正常播放'),
+            ),
+            OutlinedButton.icon(
+              key: ValueKey('speech-play-slow-$_panelId'),
+              onPressed: hasReferenceText
+                  ? () => _toggleReferencePlayback(
+                      speed: PronunciationPlaybackSpeed.slow,
+                    )
+                  : null,
+              icon: const Icon(Icons.slow_motion_video_rounded),
+              label: const Text('慢速分句'),
+            ),
+            OutlinedButton.icon(
+              key: ValueKey('speech-play-focus-$_panelId'),
+              onPressed: _focusWords.isEmpty
+                  ? null
+                  : () => _toggleReferencePlayback(
+                      textOverride: _focusWords.join('. '),
+                      speed: PronunciationPlaybackSpeed.slow,
+                    ),
+              icon: const Icon(Icons.hearing_rounded),
+              label: const Text('逐词听辨'),
             ),
             FilledButton.icon(
               key: ValueKey('speech-voice-record-$_panelId'),
@@ -232,6 +258,37 @@ class _PronunciationCoachPanelState
               label: const Text('清空本轮反馈'),
             ),
           ],
+        ),
+        const SizedBox(height: 12),
+        Material(
+          color: Colors.transparent,
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ChoiceChip(
+                label: const Text('自然声线'),
+                selected: _voiceGender == PronunciationVoiceGender.neutral,
+                onSelected: (_) => setState(
+                  () => _voiceGender = PronunciationVoiceGender.neutral,
+                ),
+              ),
+              ChoiceChip(
+                label: const Text('偏女声'),
+                selected: _voiceGender == PronunciationVoiceGender.female,
+                onSelected: (_) => setState(
+                  () => _voiceGender = PronunciationVoiceGender.female,
+                ),
+              ),
+              ChoiceChip(
+                label: const Text('偏男声'),
+                selected: _voiceGender == PronunciationVoiceGender.male,
+                onSelected: (_) => setState(
+                  () => _voiceGender = PronunciationVoiceGender.male,
+                ),
+              ),
+            ],
+          ),
         ),
         if (hasReferenceText) ...[
           const SizedBox(height: 14),
@@ -397,14 +454,20 @@ class _PronunciationCoachPanelState
           textColor: AppColors.textSecondary,
           icon: Icons.shield_moon_outlined,
           text:
-              '这里已经有真实的标准发音、真实录音和真实回放；自动检查仍基于浏览器语音识别，只负责告诉你“有没有把目标词句读出来”，不是声学发音评分。',
+              '这里使用内置参考音频或系统 TTS 做真实播放，并提供真实录音和回放；自动检查仍基于浏览器语音识别，只负责提供“是否被听懂”的线索，不是声学发音评分。',
         ),
       ],
     );
   }
 
-  Future<void> _toggleReferencePlayback() async {
-    if (_referenceText.isEmpty) {
+  Future<void> _toggleReferencePlayback({
+    PronunciationPlaybackSpeed speed = PronunciationPlaybackSpeed.normal,
+    String? textOverride,
+  }) async {
+    final playbackText = textOverride?.trim().isNotEmpty == true
+        ? textOverride!.trim()
+        : _referenceText;
+    if (playbackText.isEmpty) {
       return;
     }
     if (_isRecordingLearnerVoice) {
@@ -439,19 +502,23 @@ class _PronunciationCoachPanelState
     setState(() {
       _isSpeaking = true;
       _errorMessage = null;
-      _statusMessage = '正在播放标准参考发音。';
+      _statusMessage = speed == PronunciationPlaybackSpeed.slow
+          ? '正在慢速播放参考发音。'
+          : '正在播放参考发音。';
     });
 
     try {
       await _practiceService.speakReference(
-        text: _referenceText,
+        text: playbackText,
         accentPreference: _accentPreference,
+        speed: speed,
+        voiceGender: _voiceGender,
       );
       if (!mounted) {
         return;
       }
       setState(() {
-        _statusMessage = '参考发音播放完成，可以立刻录自己的声音或做识别检查。';
+        _statusMessage = '参考发音播放完成，可以立刻录自己的声音、回放对照或做识别检查。';
       });
     } catch (_) {
       if (!mounted) {
@@ -969,7 +1036,7 @@ class _AutomaticCheckCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  '自动检查（识别版）',
+                  '可理解度线索（识别辅助）',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
@@ -1002,7 +1069,7 @@ class _AutomaticCheckCard extends StatelessWidget {
               const SizedBox(
                 width: 76,
                 child: Text(
-                  '识别覆盖',
+                  '识别线索',
                   style: TextStyle(
                     fontSize: 13,
                     color: AppColors.textSecondary,
@@ -1089,6 +1156,15 @@ class _AutomaticCheckCard extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            '识别线索只用来帮助你判断“是否被听懂”，不等同于声学发音评分。',
+            style: TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+              height: 1.5,
             ),
           ),
         ],

@@ -8,14 +8,13 @@ import 'package:record/record.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
+import 'pronunciation_audio_assets.dart';
+
 class LearnerRecording {
   final String path;
   final Duration duration;
 
-  const LearnerRecording({
-    required this.path,
-    required this.duration,
-  });
+  const LearnerRecording({required this.path, required this.duration});
 
   String get durationLabel {
     final totalSeconds = duration.inSeconds;
@@ -29,6 +28,7 @@ class PronunciationPracticeService {
   final FlutterTts _tts = FlutterTts();
   final SpeechToText _speech = SpeechToText();
   final AudioRecorder _recorder = AudioRecorder();
+  final AudioPlayer _referencePlayer = AudioPlayer();
   final AudioPlayer _recordingPlayer = AudioPlayer();
   final StreamController<void> _recordingPlaybackCompletedController =
       StreamController<void>.broadcast();
@@ -37,6 +37,7 @@ class PronunciationPracticeService {
   List<LocaleName>? _cachedLocales;
 
   PronunciationPracticeService() {
+    _referencePlayer.setReleaseMode(ReleaseMode.stop);
     _recordingPlayer.setReleaseMode(ReleaseMode.stop);
     _recordingPlayer.onPlayerComplete.listen((_) {
       _recordingPlaybackCompletedController.add(null);
@@ -49,22 +50,51 @@ class PronunciationPracticeService {
   Future<void> speakReference({
     required String text,
     required String accentPreference,
+    PronunciationPlaybackSpeed speed = PronunciationPlaybackSpeed.normal,
+    PronunciationVoiceGender voiceGender = PronunciationVoiceGender.neutral,
   }) async {
     if (text.trim().isEmpty) {
       throw StateError('No reference text available.');
     }
 
+    final plan = PronunciationAudioLibrary.resolvePlayback(
+      text: text,
+      accentPreference: accentPreference,
+      speed: speed,
+      voiceGender: voiceGender,
+    );
+
     await _tts.awaitSpeakCompletion(true);
     await _tts.stop();
-    await _tts.setLanguage(_ttsLanguageForAccent(accentPreference));
-    await _tts.setSpeechRate(0.42);
-    await _tts.setPitch(1.0);
+    await _referencePlayer.stop();
+
+    if (plan.source == PronunciationPlaybackSource.asset &&
+        plan.asset != null) {
+      await _referencePlayer.play(
+        AssetSource(PronunciationAudioLibrary.assetSourcePath(plan.asset!)),
+      );
+      return;
+    }
+
+    await _tts.setLanguage(plan.localeId);
+    await _tryApplyPreferredVoice(plan);
+    await _tts.setSpeechRate(
+      plan.ttsRate ?? PronunciationAudioLibrary.normalTtsRate,
+    );
+    await _tts.setPitch(plan.ttsPitch ?? 1.0);
     await _tts.setVolume(1.0);
-    await _tts.speak(text);
+
+    for (final segment in plan.segments) {
+      await _tts.speak(segment);
+      if (plan.speed == PronunciationPlaybackSpeed.slow) {
+        await Future<void>.delayed(const Duration(milliseconds: 180));
+      }
+    }
   }
 
   Future<void> stopSpeaking() async {
     await _tts.stop();
+    await _referencePlayer.stop();
   }
 
   Future<bool> startListening({
@@ -145,10 +175,7 @@ class PronunciationPracticeService {
       return null;
     }
 
-    return LearnerRecording(
-      path: path.trim(),
-      duration: duration,
-    );
+    return LearnerRecording(path: path.trim(), duration: duration);
   }
 
   Future<void> cancelLearnerRecording() async {
@@ -170,6 +197,7 @@ class PronunciationPracticeService {
     await cancelLearnerRecording();
     await stopLearnerRecordingPlayback();
     await _recorder.dispose();
+    await _referencePlayer.dispose();
     await _recordingPlayer.dispose();
     await _recordingPlaybackCompletedController.close();
   }
@@ -194,7 +222,9 @@ class PronunciationPracticeService {
     _speechInitialized = initialized;
 
     if (!initialized) {
-      onError('Speech recognition is not available in the current environment.');
+      onError(
+        'Speech recognition is not available in the current environment.',
+      );
       return false;
     }
 
@@ -258,9 +288,7 @@ class PronunciationPracticeService {
 
     final directory = await getTemporaryDirectory();
     final extension = switch (encoder) {
-      AudioEncoder.aacLc ||
-      AudioEncoder.aacEld ||
-      AudioEncoder.aacHe => 'm4a',
+      AudioEncoder.aacLc || AudioEncoder.aacEld || AudioEncoder.aacHe => 'm4a',
       AudioEncoder.amrNb || AudioEncoder.amrWb => '3gp',
       AudioEncoder.opus => 'opus',
       AudioEncoder.flac => 'flac',
@@ -275,7 +303,40 @@ class PronunciationPracticeService {
     return kIsWeb ? UrlSource(path) : DeviceFileSource(path);
   }
 
-  String _ttsLanguageForAccent(String accentPreference) {
-    return accentPreference == 'british' ? 'en-GB' : 'en-US';
+  Future<void> _tryApplyPreferredVoice(PronunciationPlaybackPlan plan) async {
+    try {
+      final voices = await _tts.getVoices;
+      if (voices is! List) {
+        return;
+      }
+
+      final candidates = voices.whereType<Map>().where((voice) {
+        final locale = voice['locale']?.toString().toLowerCase() ?? '';
+        return locale == plan.localeId.toLowerCase();
+      }).toList();
+
+      if (candidates.isEmpty) {
+        return;
+      }
+
+      Map<dynamic, dynamic> selected = candidates.first;
+      if (plan.voiceGender != PronunciationVoiceGender.neutral) {
+        final genderNeedle = plan.voiceGender.name.toLowerCase();
+        selected = candidates.firstWhere((voice) {
+          final name = voice['name']?.toString().toLowerCase() ?? '';
+          final gender = voice['gender']?.toString().toLowerCase() ?? '';
+          return name.contains(genderNeedle) || gender.contains(genderNeedle);
+        }, orElse: () => candidates.first);
+      }
+
+      final name = selected['name']?.toString();
+      final locale = selected['locale']?.toString();
+      if (name != null && locale != null) {
+        await _tts.setVoice({'name': name, 'locale': locale});
+      }
+    } catch (_) {
+      // Voice enumeration is platform-specific; language/rate/pitch are enough
+      // for the fallback path when a detailed voice cannot be selected.
+    }
   }
 }
