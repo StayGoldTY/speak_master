@@ -26,6 +26,103 @@ export type RuleAnalysis = {
   estimatedWordsPerMinute: number | null;
 };
 
+export type AlignedWord = {
+  expected: string;
+  spoken: string;
+  status: 'match' | 'substitute' | 'missing' | 'extra';
+};
+
+export const alignWords = (expected: string[], spoken: string[]) => {
+  const rows = expected.length;
+  const cols = spoken.length;
+  const table = Array.from({ length: rows + 1 }, () =>
+    Array.from({ length: cols + 1 }, () => 0),
+  );
+
+  for (let row = 0; row <= rows; row += 1) {
+    table[row][0] = row;
+  }
+  for (let col = 0; col <= cols; col += 1) {
+    table[0][col] = col;
+  }
+  for (let row = 1; row <= rows; row += 1) {
+    for (let col = 1; col <= cols; col += 1) {
+      const cost = expected[row - 1] === spoken[col - 1] ? 0 : 1;
+      table[row][col] = Math.min(
+        table[row - 1][col] + 1,
+        table[row][col - 1] + 1,
+        table[row - 1][col - 1] + cost,
+      );
+    }
+  }
+
+  const alignments: AlignedWord[] = [];
+  let row = rows;
+  let col = cols;
+  while (row > 0 || col > 0) {
+    if (
+      row > 0 &&
+      col > 0 &&
+      expected[row - 1] === spoken[col - 1] &&
+      table[row][col] === table[row - 1][col - 1]
+    ) {
+      alignments.push({
+        expected: expected[row - 1],
+        spoken: spoken[col - 1],
+        status: 'match',
+      });
+      row -= 1;
+      col -= 1;
+      continue;
+    }
+    if (row > 0 && col > 0 && table[row][col] === table[row - 1][col - 1] + 1) {
+      alignments.push({
+        expected: expected[row - 1],
+        spoken: spoken[col - 1],
+        status: 'substitute',
+      });
+      row -= 1;
+      col -= 1;
+      continue;
+    }
+    if (col > 0 && table[row][col] === table[row][col - 1] + 1) {
+      alignments.push({
+        expected: '',
+        spoken: spoken[col - 1],
+        status: 'extra',
+      });
+      col -= 1;
+      continue;
+    }
+    alignments.push({
+      expected: expected[row - 1],
+      spoken: '',
+      status: 'missing',
+    });
+    row -= 1;
+  }
+
+  alignments.reverse();
+  const matchedWords = alignments
+    .filter((item) => item.status === 'match')
+    .map((item) => item.expected);
+  const missingWords = alignments
+    .filter(
+      (item) => item.status === 'missing' || item.status === 'substitute',
+    )
+    .map((item) => item.expected);
+
+  return {
+    alignments,
+    matchedWords,
+    missingWords,
+    coverage:
+      expected.length === 0
+        ? 0
+        : clamp(matchedWords.length / expected.length, 0, 1),
+  };
+};
+
 export const analyzeTranscript = ({
   referenceText,
   transcript,
@@ -37,30 +134,25 @@ export const analyzeTranscript = ({
   focusWords: string[];
   audioDurationMs?: number | null;
 }): RuleAnalysis => {
-  const expectedWords = uniqueTokens(tokenize(referenceText));
-  const spokenWords = uniqueTokens(tokenize(transcript));
+  const expectedWords = tokenize(referenceText);
+  const spokenWords = tokenize(transcript);
+  const alignment = alignWords(expectedWords, spokenWords);
+  const spokenSet = new Set(spokenWords);
   const normalizedFocusWords = uniqueTokens(
     focusWords.flatMap((item) => tokenize(item)),
   );
 
-  const matchedWords = expectedWords.filter((word) => spokenWords.includes(word));
-  const missingWords = expectedWords
-    .filter((word) => !spokenWords.includes(word))
-    .slice(0, 8);
   const matchedFocusWords = normalizedFocusWords.filter((word) =>
-    spokenWords.includes(word),
+    spokenSet.has(word),
   );
   const missingFocusWords = normalizedFocusWords.filter(
-    (word) => !spokenWords.includes(word),
+    (word) => !spokenSet.has(word),
   );
   const weakWords = Array.from(
-    new Set([...missingFocusWords, ...missingWords]),
+    new Set([...missingFocusWords, ...alignment.missingWords]),
   ).slice(0, 5);
 
-  const coverageScore =
-    expectedWords.length === 0
-      ? 0
-      : clamp(matchedWords.length / expectedWords.length, 0, 1);
+  const coverageScore = alignment.coverage;
   const estimatedWordsPerMinute =
     audioDurationMs && audioDurationMs > 0
       ? Math.round((spokenWords.length / audioDurationMs) * 60000)
@@ -88,8 +180,8 @@ export const analyzeTranscript = ({
     paceBand,
     expectedWords,
     spokenWords,
-    matchedWords,
-    missingWords,
+    matchedWords: alignment.matchedWords,
+    missingWords: alignment.missingWords.slice(0, 8),
     matchedFocusWords,
     missingFocusWords,
     weakWords,
@@ -122,7 +214,7 @@ export const buildFallbackPackage = ({
   ].slice(0, 4);
 
   const teacherExplanation = [
-    `Coverage is ${Math.round(analysis.coverageScore * 100)}%.`,
+    `Word-level recognition alignment is ${Math.round(analysis.coverageScore * 100)}%. This is not an acoustic pronunciation score.`,
     analysis.paceBand === 'tooFast'
       ? 'The pacing is currently a little fast.'
       : analysis.paceBand === 'tooSlow'

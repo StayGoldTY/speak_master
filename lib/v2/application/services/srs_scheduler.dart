@@ -120,6 +120,25 @@ class SrsScheduler {
     return RecallGrade.good;
   }
 
+  /// Azure PronScore/Accuracy is 0-100. Coverage-only paths leave
+  /// [acousticScore] null so we never treat recognition overlap as pronunciation.
+  static RecallGrade gradeFromPronunciation({
+    required double coverage,
+    double? acousticScore,
+  }) {
+    final score = acousticScore;
+    if (score == null) {
+      return gradeFromCoverage(coverage);
+    }
+    if (score < 60) {
+      return RecallGrade.again;
+    }
+    if (score < 80) {
+      return RecallGrade.hard;
+    }
+    return RecallGrade.good;
+  }
+
   String formatDue(DateTime dueAt, DateTime now) {
     if (dueAt.difference(now) <= const Duration(minutes: 45) &&
         _isSameDay(dueAt, now)) {

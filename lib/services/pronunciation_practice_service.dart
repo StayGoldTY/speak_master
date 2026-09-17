@@ -9,12 +9,20 @@ import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
 import 'pronunciation_audio_assets.dart';
+import 'web_wav_recorder.dart';
 
 class LearnerRecording {
   final String path;
   final Duration duration;
+  final Uint8List? bytes;
+  final String mimeType;
 
-  const LearnerRecording({required this.path, required this.duration});
+  const LearnerRecording({
+    required this.path,
+    required this.duration,
+    this.bytes,
+    this.mimeType = 'audio/webm',
+  });
 
   String get durationLabel {
     final totalSeconds = duration.inSeconds;
@@ -28,6 +36,8 @@ class PronunciationPracticeService {
   final FlutterTts _tts = FlutterTts();
   final SpeechToText _speech = SpeechToText();
   final AudioRecorder _recorder = AudioRecorder();
+  final WebWavRecorder _webWavRecorder = WebWavRecorder();
+  bool _usingWebWav = false;
   final AudioPlayer _referencePlayer = AudioPlayer();
   final AudioPlayer _recordingPlayer = AudioPlayer();
   final StreamController<void> _recordingPlaybackCompletedController =
@@ -140,6 +150,17 @@ class PronunciationPracticeService {
   }
 
   Future<bool> startLearnerRecording() async {
+    await stopSpeaking();
+    await stopLearnerRecordingPlayback();
+
+    if (kIsWeb && _webWavRecorder.isAvailable) {
+      final started = await _webWavRecorder.start();
+      if (started) {
+        _usingWebWav = true;
+        return true;
+      }
+    }
+
     final hasPermission = await _recorder.hasPermission();
     if (!hasPermission) {
       return false;
@@ -150,13 +171,12 @@ class PronunciationPracticeService {
       throw StateError('No supported audio encoder available.');
     }
 
-    await stopSpeaking();
-    await stopLearnerRecordingPlayback();
-
+    _usingWebWav = false;
     await _recorder.start(
       RecordConfig(
         encoder: encoder,
         numChannels: 1,
+        sampleRate: 16000,
         autoGain: true,
         echoCancel: true,
         noiseSuppress: true,
@@ -170,15 +190,41 @@ class PronunciationPracticeService {
   Future<LearnerRecording?> stopLearnerRecording({
     required Duration duration,
   }) async {
+    if (_usingWebWav) {
+      _usingWebWav = false;
+      final capture = await _webWavRecorder.stop();
+      if (capture == null || capture.bytes.isEmpty) {
+        return null;
+      }
+
+      return LearnerRecording(
+        path: capture.objectUrl,
+        duration: capture.duration == Duration.zero
+            ? duration
+            : capture.duration,
+        bytes: capture.bytes,
+        mimeType: 'audio/wav',
+      );
+    }
+
     final path = await _recorder.stop();
     if (path == null || path.trim().isEmpty) {
       return null;
     }
 
-    return LearnerRecording(path: path.trim(), duration: duration);
+    return LearnerRecording(
+      path: path.trim(),
+      duration: duration,
+      mimeType: _mimeTypeForPath(path),
+    );
   }
 
   Future<void> cancelLearnerRecording() async {
+    if (_usingWebWav) {
+      _usingWebWav = false;
+      await _webWavRecorder.cancel();
+      return;
+    }
     await _recorder.cancel();
   }
 
@@ -264,11 +310,11 @@ class PronunciationPracticeService {
 
   Future<AudioEncoder?> _resolveRecordingEncoder() async {
     const preferredEncoders = [
-      AudioEncoder.aacLc,
-      AudioEncoder.opus,
       AudioEncoder.wav,
-      AudioEncoder.flac,
       AudioEncoder.pcm16bits,
+      AudioEncoder.opus,
+      AudioEncoder.aacLc,
+      AudioEncoder.flac,
     ];
 
     for (final encoder in preferredEncoders) {
@@ -297,6 +343,26 @@ class PronunciationPracticeService {
     };
 
     return '${directory.path}/pronunciation_${DateTime.now().millisecondsSinceEpoch}.$extension';
+  }
+
+  String _mimeTypeForPath(String path) {
+    final normalized = path.toLowerCase();
+    if (normalized.endsWith('.wav') || normalized.endsWith('.pcm')) {
+      return 'audio/wav';
+    }
+    if (normalized.endsWith('.ogg') || normalized.endsWith('.opus')) {
+      return 'audio/ogg';
+    }
+    if (normalized.endsWith('.m4a') || normalized.endsWith('.aac')) {
+      return 'audio/mp4';
+    }
+    if (normalized.endsWith('.flac')) {
+      return 'audio/flac';
+    }
+    if (normalized.endsWith('.webm')) {
+      return 'audio/webm';
+    }
+    return 'audio/wav';
   }
 
   Source _recordingSource(String path) {

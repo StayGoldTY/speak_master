@@ -88,4 +88,19 @@ void main() {
     }
     expect(memory.ease, greaterThanOrEqualTo(1.3));
   });
+
+  test('acoustic pronunciation scores are not mixed with coverage', () {
+    expect(
+      SrsScheduler.gradeFromPronunciation(coverage: 0.95, acousticScore: 40),
+      RecallGrade.again,
+    );
+    expect(
+      SrsScheduler.gradeFromPronunciation(coverage: 0.2, acousticScore: 88),
+      RecallGrade.good,
+    );
+    expect(
+      SrsScheduler.gradeFromPronunciation(coverage: 0.7),
+      RecallGrade.hard,
+    );
+  });
 }

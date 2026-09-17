@@ -38,6 +38,7 @@ void main() {
       );
 
       expect(assessment.attempt.source, SpeechAttemptSource.localFallback);
+      expect(assessment.attempt.feedback.isAcoustic, isFalse);
       expect(assessment.attempt.feedback.weakWords, isNotEmpty);
       expect(assessment.report.overallLabel, isNotEmpty);
     },

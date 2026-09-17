@@ -17,8 +17,9 @@ class LearningLoopBridge {
     List<LearningItem> catalog = UnifiedLearningCatalog.items,
   }) {
     final timestamp = now ?? DateTime.now();
-    final coverageGrade = SrsScheduler.gradeFromCoverage(
-      feedback.coverageScore,
+    final coverageGrade = SrsScheduler.gradeFromPronunciation(
+      coverage: feedback.coverageScore,
+      acousticScore: feedback.overallAcousticScore,
     );
     final updates = <String, SrsMemory>{};
 

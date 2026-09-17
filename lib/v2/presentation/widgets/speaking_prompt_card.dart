@@ -192,7 +192,7 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
             if (!widget.compact) ...[
               const SizedBox(height: 14),
               const Text(
-                '如果你想走云端转写和结构化测评，先录下自己的声音再开始检查。云端暂时不可用时，系统会自动回退到本地识别反馈，并明确告诉你当前反馈类型。',
+                '开口评测会同时录音。配置了 Azure Speech 后给出词/音素声学评分；否则只做识别词级对齐，并标明这不是声学分。',
                 style: TextStyle(
                   fontSize: 12,
                   color: AppColors.textSecondary,
@@ -219,7 +219,7 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
               const LinearProgressIndicator(minHeight: 4),
               const SizedBox(height: 8),
               const Text(
-                '正在上传本次口语尝试，并生成结构化反馈...',
+                '正在用录音做发音评测...',
                 style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
               ),
             ],
@@ -328,7 +328,7 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
 
     setState(() {
       _isSubmitting = true;
-      _submissionStatus = '正在准备云端语音测评...';
+      _submissionStatus = '正在准备发音评测...';
     });
 
     final assessment = await ref
@@ -349,9 +349,9 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
       _latestFeedback = assessment.attempt.feedback;
       _latestReport = assessment.report;
       _sessionAttempts.insert(0, assessment.attempt);
-      _submissionStatus = assessment.attempt.source == SpeechAttemptSource.cloud
-          ? '云端测评已保存，本次练习的反馈和测评报告已经更新。'
-          : '云端测评暂时不可用，这一轮已保留为本地回退反馈。';
+      _submissionStatus = assessment.attempt.feedback.isAcoustic
+          ? '已完成 Azure 声学评测：词和音素分数来自真实发音模型。'
+          : '当前没有可用的 Azure 声学评测，这一轮只保留识别词级对齐，不是发音分数。';
     });
 
     await ref
@@ -806,7 +806,10 @@ class _SpeechFeedbackSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final intelligibilityPercent = (feedback.coverageScore * 100).round();
+    final isAcoustic = feedback.isAcoustic;
+    final scoreLabel = isAcoustic
+        ? 'Azure ${feedback.overallAcousticScore?.round() ?? 0}'
+        : '识别对齐 ${(feedback.coverageScore * 100).round()}%';
 
     return Container(
       width: double.infinity,
@@ -829,7 +832,7 @@ class _SpeechFeedbackSummary extends StatelessWidget {
                 ),
               ),
               V2Pill(
-                label: '识别线索 $intelligibilityPercent%',
+                label: scoreLabel,
                 color: AppColors.primary,
               ),
             ],
@@ -845,6 +848,12 @@ class _SpeechFeedbackSummary extends StatelessWidget {
             runSpacing: 8,
             children: [
               V2Pill(
+                label: feedback.assessmentKind.label,
+                color: isAcoustic
+                    ? AppColors.secondary
+                    : AppColors.textSecondary,
+              ),
+              V2Pill(
                 label: feedback.fluencyBand.label,
                 color: AppColors.successGreen,
               ),
@@ -852,14 +861,62 @@ class _SpeechFeedbackSummary extends StatelessWidget {
                 label: feedback.paceBand.label,
                 color: AppColors.accentOrange,
               ),
-              V2Pill(
-                label: feedback.fallbackUsed ? '本地回退' : '云端测评',
-                color: feedback.fallbackUsed
-                    ? AppColors.textSecondary
-                    : AppColors.secondary,
-              ),
+              if (isAcoustic && feedback.accuracyScore != null)
+                V2Pill(
+                  label: '准确 ${feedback.accuracyScore!.round()}',
+                  color: AppColors.primary,
+                ),
+              if (isAcoustic && feedback.completenessScore != null)
+                V2Pill(
+                  label: '完整 ${feedback.completenessScore!.round()}',
+                  color: AppColors.primary,
+                ),
             ],
           ),
+          if (feedback.wordResults.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: feedback.wordResults.take(12).map((item) {
+                final color = switch (item.errorType) {
+                  PronunciationWordError.none => AppColors.successGreen,
+                  PronunciationWordError.mispronunciation =>
+                    AppColors.accentOrange,
+                  PronunciationWordError.omission => AppColors.errorRed,
+                  PronunciationWordError.insertion => AppColors.textSecondary,
+                };
+                final score = item.accuracyScore == null
+                    ? item.word
+                    : '${item.word} ${item.accuracyScore!.round()}';
+                return V2Pill(label: score, color: color);
+              }).toList(),
+            ),
+          ],
+          if (feedback.phonemeIssues.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Text(
+              '音素提示',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            ...feedback.phonemeIssues.take(4).map((item) {
+              final score = item.accuracyScore == null
+                  ? ''
+                  : '（${item.accuracyScore!.round()}）';
+              final spoken = item.spoken == null ? '' : ' → ${item.spoken}';
+              final hint = item.coachingHint == null
+                  ? ''
+                  : ' ${item.coachingHint}';
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text(
+                  '• /${item.expected}/$spoken$score$hint',
+                  style: const TextStyle(fontSize: 13, height: 1.5),
+                ),
+              );
+            }),
+          ],
           if (feedback.weakWords.isNotEmpty) ...[
             const SizedBox(height: 12),
             Text(
@@ -1033,8 +1090,9 @@ class _AttemptHistorySummary extends StatelessWidget {
                     ),
                   ),
                   V2Pill(
-                    label:
-                        '识别线索 ${(attempt.feedback.coverageScore * 100).round()}%',
+                    label: attempt.feedback.isAcoustic
+                        ? 'Azure ${attempt.feedback.overallAcousticScore?.round() ?? 0}'
+                        : '对齐 ${(attempt.feedback.coverageScore * 100).round()}%',
                     color: AppColors.primary,
                   ),
                   const SizedBox(width: 8),

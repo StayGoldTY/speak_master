@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:speak_master/services/azure_pronunciation_client.dart';
 import 'package:speak_master/services/pronunciation_check_engine.dart';
 import 'package:speak_master/v2/application/services/speech_feedback_engine.dart';
 import 'package:speak_master/v2/domain/models/course_models.dart';
@@ -52,6 +53,63 @@ void main() {
       );
       expect(feedback.retrySuggestions.join(' '), contains('large latte'));
       expect(feedback.stressHints.join(' '), contains('Can I get a'));
+      expect(feedback.isAcoustic, isFalse);
+      expect(feedback.teacherExplanation, contains('不是声学评分'));
     },
   );
+
+  test('Azure results are labeled as acoustic scores', () {
+    const engine = SpeechFeedbackEngine();
+    const prompt = SpeakingPrompt(
+      id: 'cafe-order',
+      kind: ActivityKind.shadowing,
+      title: 'Cafe order shadowing',
+      scenario: 'Cafe',
+      instruction: 'Read',
+      referenceText: 'Can I get a large latte please',
+      focusWords: ['large', 'latte', 'please'],
+      checklist: [],
+    );
+    final check = PronunciationCheckEngine.analyze(
+      referenceText: prompt.referenceText,
+      focusWords: prompt.focusWords,
+      transcript: 'can i get a latte',
+    );
+    final azure = AzurePronunciationAssessment(
+      recognizedText: 'Can I get a large latte please',
+      accuracyScore: 71,
+      fluencyScore: 80,
+      completenessScore: 96,
+      pronScore: 74,
+      locale: 'en-US',
+      words: const [
+        AzurePronunciationWord(
+          word: 'latte',
+          errorType: 'Mispronunciation',
+          accuracyScore: 52,
+          phonemes: [
+            AzurePronunciationPhoneme(
+              phoneme: 'æ',
+              accuracyScore: 40,
+              spokenPhoneme: 'ɑ',
+            ),
+          ],
+        ),
+      ],
+    );
+
+    final feedback = engine.build(
+      result: check,
+      prompt: prompt,
+      fallbackUsed: false,
+      azure: azure,
+    );
+
+    expect(feedback.isAcoustic, isTrue);
+    expect(feedback.pronScore, 74);
+    expect(feedback.teacherExplanation, contains('Azure 声学评测'));
+    expect(feedback.teacherExplanation, contains('不是识别覆盖率'));
+    expect(feedback.weakWords, contains('latte'));
+    expect(feedback.phonemeIssues, isNotEmpty);
+  });
 }

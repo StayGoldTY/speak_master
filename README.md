@@ -31,8 +31,8 @@
   - `readAloud`
 - lesson 中的 `audio` / `recordAndCompare` / `readAloud` 现已接入：
   - 真实标准发音播放：基于 `flutter_tts`
-  - 浏览器语音识别检查：基于 `speech_to_text`
-  - 识别覆盖与重点词反馈：基于 `PronunciationCheckEngine`
+  - 开口评测：优先 Azure Pronunciation Assessment（词/音素声学评分）
+  - 无 Azure 密钥时：浏览器识别的词级对齐 + 中文母语音素提示，明确标注不是声学评分
 - `u11-u32` 当前不会假装成已上线课程，但现在都可以点进单元详情查看：
   - 将学什么
   - 常见误区
@@ -183,7 +183,12 @@ flutter build web --release --base-href /speak_master/
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 
-未配置时，页面仍然可以部署，但会以本地体验 / 游客模式运行。
+声学发音评分不要把密钥编进 GitHub Pages 前端。请配到 Supabase Edge Function secrets：
+
+- `AZURE_SPEECH_KEY`
+- `AZURE_SPEECH_REGION`（例如 `eastasia`）
+
+本地原生调试才可以用 `--dart-define=AZURE_SPEECH_KEY=... --dart-define=AZURE_SPEECH_REGION=eastasia`。未配置时应用仍可用，但开口反馈只有识别对齐，不会假装打分。
 
 ## 目录说明
 
@@ -201,5 +206,5 @@ flutter build web --release --base-href /speak_master/
 - 分阶段继续把 `u11-u32` 补成真实可学习课程
 - 接入真实标准音频播放能力
 - 接入真实录音回放与对照能力
-- 在能力真实可用后，再考虑发音评分与更细粒度反馈
+- 配置 `AZURE_SPEECH_KEY` / `AZURE_SPEECH_REGION` 后启用词/音素声学评分
 - 继续优化社区的编辑、举报与内容治理能力
