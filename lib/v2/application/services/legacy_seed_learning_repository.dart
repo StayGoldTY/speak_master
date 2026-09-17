@@ -6,10 +6,14 @@ import '../../../models/phoneme.dart';
 import '../../../models/unit.dart';
 import '../../../models/user_progress.dart';
 import '../../../services/pronunciation_check_engine.dart';
+import '../../data/unified_learning_catalog.dart';
 import '../../domain/models/course_models.dart';
 import '../../domain/models/learner_models.dart';
+import '../../domain/models/learning_item.dart';
 import '../../domain/models/speech_models.dart';
 import '../../domain/repositories/v2_learning_repository.dart';
+import 'srs_scheduler.dart';
+import 'unified_session_composer.dart';
 
 class LegacySeedLearningRepository implements V2LearningRepository {
   LegacySeedLearningRepository() : _track = _buildTrack();
@@ -277,35 +281,35 @@ class LegacySeedLearningRepository implements V2LearningRepository {
       prompts: prompts,
       goal: learner.goal,
     );
-    final reviewRoute = progress.pronunciationReviewEntries.isEmpty
-        ? '/speaking'
-        : '/speaking?prompt=${progress.pronunciationReviewEntries.first.sourcePromptId}';
+    final sessionPlan = const UnifiedSessionComposer().compose(
+      catalog: UnifiedLearningCatalog.items,
+      progress: progress,
+      learner: learner,
+    );
     final allocation = _allocatePlanMinutes(learner.dailyMinutes);
 
     return DailyPlan(
       headline: '$learnerName 的今日学习',
-      subtitle: _buildPlanSubtitle(learner),
+      subtitle: _buildPlanSubtitle(learner, sessionPlan),
       items: [
+        DailyPlanItem(
+          id: 'plan_session',
+          title: snapshot.dueTodayCount > 0
+              ? '今日学习循环 · ${snapshot.dueTodayCount} 个到期提取'
+              : '今日学习循环',
+          subtitle: sessionPlan.subtitle,
+          route: '/session',
+          kind: DailyPlanItemKind.session,
+          estimatedMinutes: allocation.sessionMinutes,
+          xpReward: 25,
+        ),
         DailyPlanItem(
           id: 'plan_lesson',
           title: nextLesson?.title ?? '回顾发音基础',
           subtitle: nextLesson?.description ?? '先把发音底座复习一轮，保持嘴形和节奏感觉。',
-          route: nextLesson == null ? '/speaking' : '/lesson/${nextLesson.id}',
+          route: nextLesson == null ? '/session' : '/lesson/${nextLesson.id}',
           kind: DailyPlanItemKind.lesson,
           estimatedMinutes: allocation.lessonMinutes,
-          xpReward: 20,
-        ),
-        DailyPlanItem(
-          id: 'plan_review',
-          title: snapshot.weakPoints.isEmpty
-              ? '做一轮最小对立体复习'
-              : '补强 ${snapshot.weakPoints.first.label}',
-          subtitle: snapshot.weakPoints.isEmpty
-              ? '趁感觉还在，先复习一组容易混淆的对比音。'
-              : snapshot.weakPoints.first.description,
-          route: reviewRoute,
-          kind: DailyPlanItemKind.review,
-          estimatedMinutes: allocation.reviewMinutes,
           xpReward: 10,
         ),
         DailyPlanItem(
@@ -323,15 +327,16 @@ class LegacySeedLearningRepository implements V2LearningRepository {
     );
   }
 
-  String _buildPlanSubtitle(LearnerProfileV2 learner) {
+  String _buildPlanSubtitle(LearnerProfileV2 learner, SessionPlan sessionPlan) {
     final goalLine = switch (learner.goal) {
-      LearningGoal.pronunciationConfidence => '围绕发音稳定度、补弱和测评做一轮短计划。',
-      LearningGoal.dailyConversation => '围绕高频生活表达，做一轮能马上开口的日常练习。',
-      LearningGoal.travelEnglish => '围绕旅行场景，把入住、点单和即时开口先练顺。',
-      LearningGoal.workplaceSpeaking => '围绕职场表达，把汇报、会议和沟通说得更清楚。',
+      LearningGoal.pronunciationConfidence =>
+        '词汇、语法和开口会放进同一条提取循环，而不是三个互不相干的入口。',
+      LearningGoal.dailyConversation => '围绕生活场景，把词、句型和开口交错提取。',
+      LearningGoal.travelEnglish => '围绕出行场景，把词、请求句和开口放进同一轮。',
+      LearningGoal.workplaceSpeaking => '围绕职场表达，把词、汇报句型和开口串成一条循环。',
     };
 
-    return '今天安排约 ${learner.dailyMinutes} 分钟，$goalLine';
+    return '今天约 ${learner.dailyMinutes} 分钟。$goalLine 本轮 ${sessionPlan.dueCount} 个到期复习、${sessionPlan.newCount} 个新项目。';
   }
 
   SpeakingPrompt _selectTransferPrompt({
@@ -356,19 +361,36 @@ class LegacySeedLearningRepository implements V2LearningRepository {
 
   _PlanMinuteAllocation _allocatePlanMinutes(int requestedMinutes) {
     final total = requestedMinutes.clamp(10, 30);
-    final lessonMinutes = (total * 0.4).round().clamp(4, 12);
-    final reviewMinutes = (total * 0.25).round().clamp(2, 8);
-    final transferMinutes = total - lessonMinutes - reviewMinutes;
+    final sessionMinutes = (total * 0.55).round().clamp(6, 18);
+    final lessonMinutes = (total * 0.25).round().clamp(2, 8);
+    final transferMinutes = total - sessionMinutes - lessonMinutes;
 
     return _PlanMinuteAllocation(
+      sessionMinutes: sessionMinutes,
       lessonMinutes: lessonMinutes,
-      reviewMinutes: reviewMinutes,
       transferMinutes: transferMinutes,
     );
   }
 
   @override
   MasterySnapshot buildMasterySnapshot(UserProgress progress) {
+    const scheduler = SrsScheduler();
+    final now = DateTime.now();
+    final catalogById = {
+      for (final item in UnifiedLearningCatalog.items) item.id: item,
+    };
+
+    final dueMemories =
+        progress.srsMemories.values
+            .where((memory) => memory.isDueAt(now))
+            .toList()
+          ..sort((a, b) => a.dueAt.compareTo(b.dueAt));
+    final upcomingMemories =
+        progress.srsMemories.values
+            .where((memory) => !memory.isDueAt(now))
+            .toList()
+          ..sort((a, b) => a.dueAt.compareTo(b.dueAt));
+
     final scoreWeakPoints =
         progress.phonemeScores.entries
             .where((entry) => entry.value < 75)
@@ -382,6 +404,17 @@ class LegacySeedLearningRepository implements V2LearningRepository {
             .toList()
           ..sort((a, b) => a.score.compareTo(b.score));
 
+    final srsWeakPoints = dueMemories.take(6).map((memory) {
+      final item = catalogById[memory.itemId];
+      return WeakPointSummary(
+        label: item?.title ?? memory.itemId,
+        description: item == null
+            ? '到期提取项目，优先进入今日循环。'
+            : '${item.track.label} · ${item.kind.label}。${item.explanation}',
+        score: (memory.ease * 30).clamp(20, 90).toDouble(),
+      );
+    });
+
     final reviewEntryWeakPoints = progress.pronunciationReviewEntries
         .map(
           (entry) => WeakPointSummary(
@@ -391,24 +424,32 @@ class LegacySeedLearningRepository implements V2LearningRepository {
           ),
         )
         .toList();
-    final weakPoints = [...scoreWeakPoints, ...reviewEntryWeakPoints]
-      ..sort((a, b) => a.score.compareTo(b.score));
+    final weakPoints = [
+      ...srsWeakPoints,
+      ...scoreWeakPoints,
+      ...reviewEntryWeakPoints,
+    ]..sort((a, b) => a.score.compareTo(b.score));
 
-    final scoreReviewQueue = scoreWeakPoints
-        .take(4)
-        .map(
-          (item) => ReviewItem(
-            id: item.label,
-            label: item.label,
-            reason: item.description,
-            recommendedActivityKind: ActivityKind.wordRepeat,
-            score: item.score,
-          ),
-        )
-        .toList();
+    final srsQueue = dueMemories.take(8).map((memory) {
+      final item = catalogById[memory.itemId];
+      return ReviewItem(
+        id: memory.itemId,
+        label: item?.title ?? memory.itemId,
+        reason: item?.explanation ?? '到期提取，优先复习而不是继续堆新内容。',
+        recommendedActivityKind: item?.track == SkillTrack.speaking
+            ? ActivityKind.sentenceReadAloud
+            : item?.track == SkillTrack.grammar
+            ? ActivityKind.mcq
+            : ActivityKind.wordRepeat,
+        score: memory.lapses.toDouble(),
+        dueLabel: scheduler.formatDue(memory.dueAt, now),
+        trackLabel: item?.track.label,
+      );
+    });
     final reviewQueue = [
+      ...srsQueue,
       ...progress.pronunciationReviewEntries
-          .take(6)
+          .take(4)
           .map(
             (entry) => ReviewItem(
               id: entry.id,
@@ -420,8 +461,11 @@ class LegacySeedLearningRepository implements V2LearningRepository {
               score: entry.weaknessScore,
             ),
           ),
-      ...scoreReviewQueue,
-    ].take(6).toList();
+    ].take(8).toList();
+
+    final nextDue = upcomingMemories.isEmpty
+        ? null
+        : scheduler.formatDue(upcomingMemories.first.dueAt, now);
 
     return MasterySnapshot(
       streakDays: progress.streakDays,
@@ -429,9 +473,13 @@ class LegacySeedLearningRepository implements V2LearningRepository {
       completedLessons: progress.completedLessons.length,
       weakPoints: weakPoints,
       reviewQueue: reviewQueue,
-      recommendedFocus: weakPoints.isEmpty
-          ? '主线可以继续推进，但每天仍要保留一轮口语输出。'
-          : '先把 ${weakPoints.first.label} 练稳，再继续加新内容。',
+      recommendedFocus: dueMemories.isNotEmpty
+          ? '今天先提取 ${dueMemories.length} 个到期项目，词汇/语法/开口放在同一条循环里。'
+          : nextDue == null
+          ? '还没有复习档案。先完成一轮今日循环，系统会开始按间隔安排下次见面。'
+          : '新内容可以继续推进，但下一次提取安排在$nextDue。',
+      dueTodayCount: dueMemories.length,
+      upcomingCount: upcomingMemories.length,
     );
   }
 
@@ -641,13 +689,13 @@ class LegacySeedLearningRepository implements V2LearningRepository {
 }
 
 class _PlanMinuteAllocation {
+  final int sessionMinutes;
   final int lessonMinutes;
-  final int reviewMinutes;
   final int transferMinutes;
 
   const _PlanMinuteAllocation({
+    required this.sessionMinutes,
     required this.lessonMinutes,
-    required this.reviewMinutes,
     required this.transferMinutes,
   });
 }

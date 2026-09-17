@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/srs_memory.dart';
 import '../models/user_progress.dart';
 import 'service_providers.dart';
 
@@ -127,6 +128,54 @@ class ProgressNotifier extends StateNotifier<UserProgress> {
 
     state = updated;
     await syncService.saveProgress(updated);
+  }
+
+  Future<void> upsertSrsMemories(List<SrsMemory> memories, {int xp = 0}) async {
+    if (memories.isEmpty && xp == 0) {
+      return;
+    }
+
+    final syncService = _ref.read(progressSyncServiceProvider);
+    final gamService = _ref.read(gamificationServiceProvider);
+    final merged = {...state.srsMemories};
+    for (final memory in memories) {
+      if (memory.itemId.trim().isEmpty) {
+        continue;
+      }
+      merged[memory.itemId] = memory;
+    }
+
+    var updated = state.copyWith(srsMemories: merged);
+    if (xp > 0) {
+      updated = gamService.addXp(updated, xp);
+      updated = gamService.updateStreak(updated);
+      updated = gamService.checkBadges(updated);
+    }
+
+    state = updated;
+    await syncService.saveProgress(updated);
+  }
+
+  Future<void> completeLearningSession({int xp = 15}) async {
+    final today = _dateKey(DateTime.now());
+    if (state.lastSessionDate == today) {
+      return;
+    }
+
+    final syncService = _ref.read(progressSyncServiceProvider);
+    final gamService = _ref.read(gamificationServiceProvider);
+    var updated = state.copyWith(lastSessionDate: today);
+    updated = gamService.addXp(updated, xp);
+    updated = gamService.updateStreak(updated);
+    updated = gamService.checkBadges(updated);
+    state = updated;
+    await syncService.saveProgress(updated);
+  }
+
+  String _dateKey(DateTime value) {
+    final month = value.month.toString().padLeft(2, '0');
+    final day = value.day.toString().padLeft(2, '0');
+    return '${value.year}-$month-$day';
   }
 
   List<PronunciationReviewEntry> _mergeReviewEntries(

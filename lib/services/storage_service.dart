@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/srs_memory.dart';
 import '../models/user_progress.dart';
 
 class StorageService {
@@ -20,6 +21,8 @@ class StorageService {
   static const _keyEarnedBadges = 'earned_badges';
   static const _keyPhonemeScores = 'phoneme_scores';
   static const _keyPronunciationReviewEntries = 'pronunciation_review_entries';
+  static const _keySrsMemories = 'srs_memories';
+  static const _keyLastSessionDate = 'last_session_date';
   static const _keyIsPro = 'is_pro';
   static const _keyTodayAssessments = 'today_assessments';
   static const _keyStreakFreeze = 'streak_freeze';
@@ -62,6 +65,14 @@ class StorageService {
       earnedBadges: (prefs.getStringList(_keyEarnedBadges) ?? const []).toSet(),
       phonemeScores: _loadPhonemeScores(prefs),
       pronunciationReviewEntries: _loadPronunciationReviewEntries(prefs),
+      srsMemories: _loadSrsMemories(prefs),
+      lastSessionDate: () {
+        final value = prefs.getString(_keyLastSessionDate);
+        if (value == null || value.trim().isEmpty) {
+          return null;
+        }
+        return value;
+      }(),
       isPro: prefs.getBool(_keyIsPro) ?? false,
       streakFreezeRemaining: prefs.getInt(_keyStreakFreeze) ?? 1,
     );
@@ -93,6 +104,15 @@ class StorageService {
             .map((entry) => jsonEncode(entry.toJson()))
             .toList(),
       ),
+      prefs.setString(
+        _keySrsMemories,
+        jsonEncode(
+          progress.srsMemories.map(
+            (key, value) => MapEntry(key, value.toJson()),
+          ),
+        ),
+      ),
+      prefs.setString(_keyLastSessionDate, progress.lastSessionDate ?? ''),
       prefs.setBool(_keyIsPro, progress.isPro),
       prefs.setInt(_keyStreakFreeze, progress.streakFreezeRemaining),
     ]);
@@ -233,6 +253,31 @@ class StorageService {
         })
         .whereType<PronunciationReviewEntry>()
         .toList();
+  }
+
+  Map<String, SrsMemory> _loadSrsMemories(SharedPreferences prefs) {
+    final raw = prefs.getString(_keySrsMemories);
+    if (raw == null || raw.trim().isEmpty) {
+      return const {};
+    }
+
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) {
+        return const {};
+      }
+
+      return decoded.map((key, value) {
+        final map = value is Map
+            ? value.map(
+                (itemKey, itemValue) => MapEntry(itemKey.toString(), itemValue),
+              )
+            : <String, dynamic>{};
+        return MapEntry(key.toString(), SrsMemory.fromJson(map));
+      });
+    } catch (_) {
+      return const {};
+    }
   }
 }
 

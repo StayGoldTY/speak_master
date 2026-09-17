@@ -9,6 +9,7 @@ import '../../presentation/screens/onboarding_screen.dart';
 import '../../presentation/screens/ops_console_screen.dart';
 import '../../presentation/screens/profile_screen.dart';
 import '../../presentation/screens/progress_screen.dart';
+import '../../presentation/screens/session_screen.dart';
 import '../../presentation/screens/speaking_hub_screen.dart';
 import '../../presentation/screens/today_screen.dart';
 import '../../presentation/widgets/v2_shell_scaffold.dart';
@@ -73,6 +74,11 @@ class V2Router {
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) =>
             LessonPlayerScreen(lessonId: state.pathParameters['lessonId']!),
+      ),
+      GoRoute(
+        path: '/session',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const SessionScreen(),
       ),
       GoRoute(
         path: '/ops',

@@ -18,7 +18,7 @@ class OnboardingScreen extends ConsumerWidget {
     return Scaffold(
       body: V2PageScaffold(
         title: '先完成你的学习设置',
-        subtitle: '告诉我们你的目标、当前水平和每日可投入时间，系统会据此生成中文引导更强、发音训练更聚焦的学习计划。',
+        subtitle: '目标、水平和每日时长会决定循环里先出现哪些词、句型和开口。词汇、语法和发音走同一条提取循环，而不是三个互不相干的功能。',
         actions: [
           TextButton(
             onPressed: () => context.push('/auth?from=%2Fprofile'),
@@ -114,7 +114,7 @@ class OnboardingScreen extends ConsumerWidget {
                         notifier.setDailyMinutes(value.round()),
                   ),
                   const Text(
-                    '首期计划会保持足够聚焦：1 节主线课 + 1 次补弱训练 + 1 次口语迁移，既能稳步推进，也不容易中断。',
+                    '首期每天会走同一条循环：先提取到期复习，再学一点点新内容，词汇、语法和开口交错进行。成功提取会排到明天，让睡眠帮忙巩固。',
                     style: TextStyle(
                       fontSize: 13,
                       color: AppColors.textSecondary,
@@ -134,7 +134,7 @@ class OnboardingScreen extends ConsumerWidget {
                     context.go('/today');
                   }
                 },
-                child: const Text('生成我的今日计划'),
+                child: const Text('开始我的学习循环'),
               ),
             ),
           ],

@@ -7,7 +7,9 @@ import '../../../providers/progress_provider.dart';
 import '../../../screens/tutorial/widgets/pronunciation_coach_panel.dart';
 import '../../../services/pronunciation_check_engine.dart';
 import '../../application/providers/v2_providers.dart';
+import '../../application/services/learning_loop_bridge.dart';
 import '../../application/services/pronunciation_drill_route_builder.dart';
+import '../../application/services/srs_scheduler.dart';
 import '../../domain/models/course_models.dart';
 import '../../domain/models/speech_models.dart';
 import 'v2_page_scaffold.dart';
@@ -16,12 +18,14 @@ class SpeakingPromptCard extends ConsumerStatefulWidget {
   final SpeakingPrompt prompt;
   final Color accentColor;
   final bool highlighted;
+  final bool compact;
 
   const SpeakingPromptCard({
     super.key,
     required this.prompt,
     required this.accentColor,
     this.highlighted = false,
+    this.compact = false,
   });
 
   @override
@@ -35,6 +39,8 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
   final List<SpeakingAttemptRecord> _sessionAttempts = [];
   bool _isSubmitting = false;
   String? _submissionStatus;
+  String? _nextReviewLabel;
+  String? _scheduledStamp;
 
   @override
   Widget build(BuildContext context) {
@@ -141,21 +147,22 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
               ),
             ],
             const SizedBox(height: 14),
-            _PronunciationRouteSection(
-              promptId: widget.prompt.id,
-              stages: drillRoute,
-              accentColor: widget.accentColor,
-              selectedText: activeReferenceText,
-              onSelectItem: _selectRouteMaterial,
-            ),
-            if (_activeMaterial != null) ...[
+            if (!widget.compact)
+              _PronunciationRouteSection(
+                promptId: widget.prompt.id,
+                stages: drillRoute,
+                accentColor: widget.accentColor,
+                selectedText: activeReferenceText,
+                onSelectItem: _selectRouteMaterial,
+              ),
+            if (!widget.compact && _activeMaterial != null) ...[
               const SizedBox(height: 10),
               V2Pill(
                 label: '已切到：${_activeMaterial!.text}',
                 color: widget.accentColor,
               ),
             ],
-            if (widget.prompt.warmupWords.isNotEmpty) ...[
+            if (!widget.compact && widget.prompt.warmupWords.isNotEmpty) ...[
               const SizedBox(height: 14),
               _DrillSection(
                 title: '先拆开练',
@@ -164,7 +171,7 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
                 compactChips: true,
               ),
             ],
-            if (widget.prompt.phraseDrills.isNotEmpty) ...[
+            if (!widget.compact && widget.prompt.phraseDrills.isNotEmpty) ...[
               const SizedBox(height: 14),
               _DrillSection(
                 title: '短语连读',
@@ -172,24 +179,27 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
                 accentColor: AppColors.secondary,
               ),
             ],
-            if (widget.prompt.sentenceVariations.isNotEmpty ||
-                widget.prompt.rhythmCue.trim().isNotEmpty ||
-                widget.prompt.extensionPrompt.trim().isNotEmpty) ...[
+            if (!widget.compact &&
+                (widget.prompt.sentenceVariations.isNotEmpty ||
+                    widget.prompt.rhythmCue.trim().isNotEmpty ||
+                    widget.prompt.extensionPrompt.trim().isNotEmpty)) ...[
               const SizedBox(height: 14),
               _VariationSection(
                 prompt: widget.prompt,
                 accentColor: widget.accentColor,
               ),
             ],
-            const SizedBox(height: 14),
-            const Text(
-              '如果你想走云端转写和结构化测评，先录下自己的声音再开始检查。云端暂时不可用时，系统会自动回退到本地识别反馈，并明确告诉你当前反馈类型。',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-                height: 1.55,
+            if (!widget.compact) ...[
+              const SizedBox(height: 14),
+              const Text(
+                '如果你想走云端转写和结构化测评，先录下自己的声音再开始检查。云端暂时不可用时，系统会自动回退到本地识别反馈，并明确告诉你当前反馈类型。',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                  height: 1.55,
+                ),
               ),
-            ),
+            ],
             PronunciationCoachPanel(
               key: ValueKey(
                 'speaking-coach-${widget.prompt.id}-$activeReferenceText',
@@ -230,6 +240,13 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
                 feedback: _latestFeedback!,
                 historyCount: history.length,
               ),
+              if (_nextReviewLabel != null) ...[
+                const SizedBox(height: 12),
+                V2Pill(
+                  label: '下次复习：$_nextReviewLabel',
+                  color: AppColors.secondary,
+                ),
+              ],
             ],
             if (_latestReport != null) ...[
               const SizedBox(height: 16),
@@ -298,8 +315,9 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
       _latestFeedback = feedback;
       _latestReport = ref
           .read(v2LocalAssessmentReportBuilderProvider)
-          .build(feedback: feedback, recommendedRoute: '/speaking');
+          .build(feedback: feedback, recommendedRoute: '/session');
     });
+    _scheduleFromFeedback(feedback);
   }
 
   Future<void> _handleAttemptReady(
@@ -356,6 +374,37 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
               )
               .toList(),
         );
+    await _scheduleFromFeedback(assessment.attempt.feedback);
+  }
+
+  Future<void> _scheduleFromFeedback(SpeechFeedback feedback) async {
+    final stamp =
+        '${widget.prompt.id}:${feedback.recognizedText}:${feedback.coverageScore.toStringAsFixed(2)}';
+    if (_scheduledStamp == stamp) {
+      return;
+    }
+    _scheduledStamp = stamp;
+
+    final memories = const LearningLoopBridge().fromSpeakingFeedback(
+      existing: ref.read(progressProvider).srsMemories,
+      promptId: widget.prompt.id,
+      feedback: feedback,
+    );
+    if (memories.isNotEmpty) {
+      await ref.read(progressProvider.notifier).upsertSrsMemories(memories);
+    }
+
+    final speakingMemory = memories.isEmpty
+        ? null
+        : memories.reduce((a, b) => a.dueAt.isAfter(b.dueAt) ? a : b);
+    if (speakingMemory != null && mounted) {
+      setState(() {
+        _nextReviewLabel = const SrsScheduler().formatDue(
+          speakingMemory.dueAt,
+          DateTime.now(),
+        );
+      });
+    }
   }
 
   List<SpeakingAttemptRecord> _mergeHistory(

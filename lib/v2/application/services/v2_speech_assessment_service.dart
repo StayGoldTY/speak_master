@@ -84,7 +84,7 @@ class V2SpeechAssessmentService {
     );
     final report = _reportBuilder.build(
       feedback: feedback,
-      recommendedRoute: '/speaking',
+      recommendedRoute: '/session',
     );
     final reviewItems = _reportBuilder.buildReviewItems(
       feedback: feedback,

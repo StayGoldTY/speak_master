@@ -37,7 +37,7 @@ class TodayScreen extends ConsumerWidget {
 
     return V2PageScaffold(
       title: '今日学习',
-      subtitle: '把主线课、补弱训练和口语迁移排进同一条日计划，让每天的学习更稳、更有连续性。',
+      subtitle: '把主线课、提取复习和口语迁移收进同一条学习循环。',
       actions: [
         V2Pill(
           label: '已坚持 ${progress.streakDays} 天',
@@ -143,6 +143,48 @@ class TodayScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const Text(
+                  '今日学习循环',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  plan.subtitle,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
+                    height: 1.6,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    V2Pill(
+                      label: mastery.dueTodayCount > 0
+                          ? '${mastery.dueTodayCount} 个到期提取'
+                          : '先学新项目，再排到明天',
+                      color: AppColors.accentOrange,
+                    ),
+                    V2Pill(label: '词汇 / 语法 / 开口交错', color: AppColors.secondary),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                FilledButton.icon(
+                  key: const ValueKey('today-session-cta'),
+                  onPressed: () => context.push('/session'),
+                  icon: const Icon(Icons.psychology_alt_rounded),
+                  label: const Text('开始今日循环'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          V2InfoCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Text(
                   nextLesson == null ? '主线已全部完成' : '继续主线课程',
                   style: const TextStyle(
@@ -154,7 +196,7 @@ class TodayScreen extends ConsumerWidget {
                 Text(
                   nextLesson == null
                       ? '你已经完成当前全部主线课程，接下来更适合回到口语迁移和弱项补强，等待下一版课程扩展。'
-                      : '别让首页只剩“任务列表”。先把下一节主线课顶到最前面，用户一进来就知道该从哪里继续。',
+                      : '主线课用来编码新的发音知识。真正的记住，发生在上面的提取循环里。',
                   style: const TextStyle(
                     fontSize: 14,
                     color: AppColors.textSecondary,
@@ -281,7 +323,8 @@ class TodayScreen extends ConsumerWidget {
           const SizedBox(height: 24),
           const V2SectionTitle(
             title: '今日任务',
-            subtitle: '建议按顺序完成，先进入主线，再补弱，最后做一次场景迁移。',
+            subtitle:
+                '先走统一循环：到期提取 → 少量新内容 → 场景开口。主线课和迁移是同一条学习环的两端，不是三个互不相关的功能。',
           ),
           ...plan.items.map(
             (item) => Padding(
@@ -368,7 +411,11 @@ class TodayScreen extends ConsumerWidget {
                     FilledButton(
                       onPressed: () => context.push(item.route),
                       child: Text(
-                        item.kind == DailyPlanItemKind.lesson ? '继续' : '开始',
+                        item.kind == DailyPlanItemKind.session
+                            ? '开始循环'
+                            : item.kind == DailyPlanItemKind.lesson
+                            ? '继续'
+                            : '开始',
                       ),
                     ),
                   ],
@@ -397,6 +444,7 @@ class TodayScreen extends ConsumerWidget {
 
   IconData _cardIcon(DailyPlanItemKind kind) {
     return switch (kind) {
+      DailyPlanItemKind.session => Icons.psychology_alt_rounded,
       DailyPlanItemKind.lesson => Icons.menu_book_rounded,
       DailyPlanItemKind.review => Icons.tune_rounded,
       DailyPlanItemKind.speaking ||
@@ -407,6 +455,7 @@ class TodayScreen extends ConsumerWidget {
 
   Color _cardColor(DailyPlanItemKind kind) {
     return switch (kind) {
+      DailyPlanItemKind.session => AppColors.secondary,
       DailyPlanItemKind.lesson => AppColors.primary,
       DailyPlanItemKind.review => AppColors.accentOrange,
       DailyPlanItemKind.speaking ||
@@ -421,7 +470,8 @@ class TodayScreen extends ConsumerWidget {
     required MasterySnapshot mastery,
   }) {
     return switch (item.kind) {
-      DailyPlanItemKind.lesson => nextLesson == null ? '主线已清空' : '主线优先',
+      DailyPlanItemKind.session => mastery.dueTodayCount > 0 ? '到期优先' : '今日主循环',
+      DailyPlanItemKind.lesson => nextLesson == null ? '主线已清空' : '编码新知识',
       DailyPlanItemKind.review => mastery.weakPoints.isEmpty ? '已达标' : '建议完成',
       DailyPlanItemKind.speaking ||
       DailyPlanItemKind.assessment ||
@@ -435,6 +485,7 @@ class TodayScreen extends ConsumerWidget {
     required MasterySnapshot mastery,
   }) {
     return switch (item.kind) {
+      DailyPlanItemKind.session => AppColors.secondary,
       DailyPlanItemKind.lesson =>
         nextLesson == null ? AppColors.successGreen : AppColors.primary,
       DailyPlanItemKind.review =>

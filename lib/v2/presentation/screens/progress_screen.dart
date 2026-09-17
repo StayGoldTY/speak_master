@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../application/providers/v2_providers.dart';
@@ -15,7 +16,7 @@ class ProgressScreen extends ConsumerWidget {
 
     return V2PageScaffold(
       title: '学习进度',
-      subtitle: '这里会跟踪你的连续学习、掌握度变化和补弱队列，帮助你更清楚地看到自己在口语上的提升。',
+      subtitle: '连续学习、到期提取和下次见面时间都在这里。复习排期来自你刚才的提取难度，而不是另做一本错题本。',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -38,6 +39,16 @@ class ProgressScreen extends ConsumerWidget {
                 value: '${snapshot.completedLessons} 节',
                 accent: AppColors.primary,
               ),
+              _MetricCard(
+                label: '今日到期',
+                value: '${snapshot.dueTodayCount}',
+                accent: AppColors.accentOrange,
+              ),
+              _MetricCard(
+                label: '已排期',
+                value: '${snapshot.upcomingCount}',
+                accent: AppColors.successGreen,
+              ),
             ],
           ),
           const SizedBox(height: 20),
@@ -46,6 +57,12 @@ class ProgressScreen extends ConsumerWidget {
               snapshot.recommendedFocus,
               style: const TextStyle(fontSize: 15, height: 1.65),
             ),
+          ),
+          const SizedBox(height: 20),
+          FilledButton.icon(
+            onPressed: () => GoRouter.of(context).push('/session'),
+            icon: const Icon(Icons.psychology_alt_rounded),
+            label: const Text('进入今日循环'),
           ),
           const SizedBox(height: 20),
           const V2SectionTitle(
@@ -97,11 +114,11 @@ class ProgressScreen extends ConsumerWidget {
             ),
           const SizedBox(height: 20),
           const V2SectionTitle(
-            title: '补弱队列',
-            subtitle: '这些内容会被优先安排到复习和口语训练里，帮助你持续补齐短板。',
+            title: '复习排期',
+            subtitle: '这些项目已经进入间隔重复。点进今日循环，按到期顺序提取，而不是按题型分三个入口。',
           ),
           if (snapshot.reviewQueue.isEmpty)
-            const V2InfoCard(child: Text('补弱队列还是空的，继续完成练习后这里会逐渐丰富起来。'))
+            const V2InfoCard(child: Text('还没有排期。先完成一轮今日循环，成功提取的项目会出现下次见面时间。'))
           else
             ...snapshot.reviewQueue.map(
               (item) => Padding(
@@ -133,7 +150,8 @@ class ProgressScreen extends ConsumerWidget {
                       ),
                       const SizedBox(width: 12),
                       V2Pill(
-                        label: item.recommendedActivityKind.label,
+                        label:
+                            item.dueLabel ?? item.recommendedActivityKind.label,
                         color: AppColors.secondary,
                       ),
                     ],

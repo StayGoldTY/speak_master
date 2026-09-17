@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../providers/progress_provider.dart';
 import '../../application/providers/v2_providers.dart';
+import '../../application/services/learning_loop_bridge.dart';
 import '../../domain/models/course_models.dart';
 import '../widgets/activity_blueprint_view.dart';
 import '../widgets/v2_page_scaffold.dart';
@@ -21,6 +22,7 @@ class LessonPlayerScreen extends ConsumerStatefulWidget {
 class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
   final Set<String> _completedActivities = <String>{};
   bool _submitting = false;
+  int _currentIndex = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +51,15 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
     final allActivitiesDone = completedCount >= totalCount;
     final canFinishLesson =
         !lessonCompleted && allActivitiesDone && !_submitting;
+    final currentActivity = lesson.activities.isEmpty
+        ? null
+        : lesson.activities[_currentIndex.clamp(
+            0,
+            lesson.activities.length - 1,
+          )];
+    final currentDone =
+        currentActivity != null &&
+        _completedActivities.contains(currentActivity.id);
 
     return Scaffold(
       appBar: AppBar(title: Text(lesson.title)),
@@ -152,15 +163,11 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
             ),
             const SizedBox(height: 24),
             const V2SectionTitle(
-              title: '学习路线',
-              subtitle: '每完成一个活动就勾选一次，形成清晰的完成反馈，而不是只看一堆内容。',
+              title: '当前活动',
+              subtitle: '一次只做一个，降低工作记忆负担。做完自动进入下一项。',
             ),
-            ...lesson.activities.asMap().entries.map((entry) {
-              final index = entry.key;
-              final activity = entry.value;
-              final isDone = _completedActivities.contains(activity.id);
-
-              return Padding(
+            if (currentActivity != null)
+              Padding(
                 padding: const EdgeInsets.only(bottom: 14),
                 child: V2InfoCard(
                   child: Column(
@@ -174,7 +181,7 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                             height: 42,
                             decoration: BoxDecoration(
                               color:
-                                  (isDone
+                                  (currentDone
                                           ? AppColors.successGreen
                                           : AppColors.primary)
                                       .withValues(alpha: 0.12),
@@ -182,10 +189,10 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                             ),
                             alignment: Alignment.center,
                             child: Text(
-                              '${index + 1}',
+                              '${_currentIndex + 1}',
                               style: TextStyle(
                                 fontWeight: FontWeight.w800,
-                                color: isDone
+                                color: currentDone
                                     ? AppColors.successGreen
                                     : AppColors.primary,
                               ),
@@ -200,7 +207,7 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                                   children: [
                                     Expanded(
                                       child: Text(
-                                        activity.title,
+                                        currentActivity.title,
                                         style: const TextStyle(
                                           fontSize: 18,
                                           fontWeight: FontWeight.w800,
@@ -208,8 +215,8 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                                       ),
                                     ),
                                     V2Pill(
-                                      label: activity.kind.label,
-                                      color: isDone
+                                      label: currentActivity.kind.label,
+                                      color: currentDone
                                           ? AppColors.successGreen
                                           : AppColors.primary,
                                     ),
@@ -217,7 +224,7 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
-                                  activity.instruction,
+                                  currentActivity.instruction,
                                   style: const TextStyle(
                                     fontSize: 13,
                                     color: AppColors.textSecondary,
@@ -230,34 +237,43 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      ActivityBlueprintView(activity: activity),
+                      ActivityBlueprintView(activity: currentActivity),
                       const SizedBox(height: 14),
                       Align(
                         alignment: Alignment.centerRight,
                         child: OutlinedButton.icon(
-                          key: ValueKey('complete-activity-${activity.id}'),
+                          key: ValueKey(
+                            'complete-activity-${currentActivity.id}',
+                          ),
                           onPressed: () {
+                            final activity = currentActivity;
+                            final isDone = _completedActivities.contains(
+                              activity.id,
+                            );
                             setState(() {
                               if (isDone) {
                                 _completedActivities.remove(activity.id);
                               } else {
                                 _completedActivities.add(activity.id);
+                                if (_currentIndex <
+                                    lesson.activities.length - 1) {
+                                  _currentIndex += 1;
+                                }
                               }
                             });
                           },
                           icon: Icon(
-                            isDone
+                            currentDone
                                 ? Icons.check_circle_rounded
                                 : Icons.radio_button_unchecked_rounded,
                           ),
-                          label: Text(isDone ? '已完成此活动' : '标记为已完成'),
+                          label: Text(currentDone ? '已完成此活动' : '标记为已完成'),
                         ),
                       ),
                     ],
                   ),
                 ),
-              );
-            }),
+              ),
             const V2SectionTitle(
               title: '单元内课程',
               subtitle: '学完本节后不要中断，继续主线才能真正形成留存。',
@@ -444,6 +460,14 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
         await notifier.completeUnit(lesson.unitId);
       }
 
+      final unlocked = const LearningLoopBridge().unlockForLesson(
+        lessonId: lesson.id,
+        existing: updatedProgress.srsMemories,
+      );
+      if (unlocked.isNotEmpty) {
+        await notifier.upsertSrsMemories(unlocked);
+      }
+
       if (!mounted) {
         return;
       }
@@ -452,8 +476,14 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
         SnackBar(
           content: Text(
             unitFullyCompleted
-                ? '已完成 ${lesson.title}，并解锁整单元完成记录。'
-                : '已完成 ${lesson.title}，进度和 XP 已记录。',
+                ? '已完成 ${lesson.title}，相关项目已进入今日循环。'
+                : unlocked.isEmpty
+                ? '已完成 ${lesson.title}，进度和 XP 已记录。'
+                : '已完成 ${lesson.title}。${unlocked.length} 个项目已加入提取循环。',
+          ),
+          action: SnackBarAction(
+            label: '去提取',
+            onPressed: () => context.go('/session'),
           ),
         ),
       );

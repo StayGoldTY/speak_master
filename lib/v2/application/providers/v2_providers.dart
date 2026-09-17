@@ -10,7 +10,10 @@ import '../../domain/repositories/v2_learning_repository.dart';
 import '../services/legacy_seed_learning_repository.dart';
 import '../services/local_assessment_report_builder.dart';
 import '../services/speech_feedback_engine.dart';
+import '../services/unified_session_composer.dart';
 import '../services/v2_speech_assessment_service.dart';
+import '../../data/unified_learning_catalog.dart';
+import '../../domain/models/learning_item.dart';
 
 class V2LearnerSetupNotifier extends StateNotifier<V2LearnerSetupState> {
   final Ref _ref;
@@ -142,6 +145,14 @@ final v2FeaturedTargetsProvider = Provider<List<PronunciationTarget>>((ref) {
 
 final v2SpeakingPromptsProvider = Provider<List<SpeakingPrompt>>((ref) {
   return ref.watch(v2LearningRepositoryProvider).getSpeakingPrompts();
+});
+
+final v2SessionPlanProvider = Provider<SessionPlan>((ref) {
+  return const UnifiedSessionComposer().compose(
+    catalog: UnifiedLearningCatalog.items,
+    progress: ref.watch(progressProvider),
+    learner: ref.watch(v2LearnerProfileProvider),
+  );
 });
 
 final v2RecentSpeakingAttemptsProvider =

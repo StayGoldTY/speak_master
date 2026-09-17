@@ -1,3 +1,5 @@
+import 'srs_memory.dart';
+
 class PronunciationReviewEntry {
   final String id;
   final String label;
@@ -62,6 +64,8 @@ class UserProgress {
   final Set<String> earnedBadges;
   final Map<String, double> phonemeScores;
   final List<PronunciationReviewEntry> pronunciationReviewEntries;
+  final Map<String, SrsMemory> srsMemories;
+  final String? lastSessionDate;
   final int streakFreezeRemaining;
   final bool isPro;
 
@@ -77,6 +81,8 @@ class UserProgress {
     this.earnedBadges = const {},
     this.phonemeScores = const {},
     this.pronunciationReviewEntries = const [],
+    this.srsMemories = const {},
+    this.lastSessionDate,
     this.streakFreezeRemaining = 1,
     this.isPro = false,
   });
@@ -101,6 +107,11 @@ class UserProgress {
             (k, v) => MapEntry(k, (v as num).toDouble()),
           ) ??
           {},
+      pronunciationReviewEntries: _readReviewEntries(
+        json['pronunciation_review_entries'],
+      ),
+      srsMemories: _readSrsMemories(json['srs_memories']),
+      lastSessionDate: json['last_session_date']?.toString(),
       streakFreezeRemaining: json['streak_freeze_remaining'] as int? ?? 1,
       isPro: json['is_pro'] as bool? ?? false,
     );
@@ -118,7 +129,15 @@ class UserProgress {
       'completed_units': completedUnits.toList(),
       'earned_badges': earnedBadges.toList(),
       'phoneme_scores': phonemeScores,
+      'pronunciation_review_entries': pronunciationReviewEntries
+          .map((entry) => entry.toJson())
+          .toList(),
+      'srs_memories': srsMemories.map(
+        (key, value) => MapEntry(key, value.toJson()),
+      ),
+      'last_session_date': lastSessionDate,
       'streak_freeze_remaining': streakFreezeRemaining,
+      'is_pro': isPro,
     };
   }
 
@@ -134,6 +153,8 @@ class UserProgress {
     Set<String>? earnedBadges,
     Map<String, double>? phonemeScores,
     List<PronunciationReviewEntry>? pronunciationReviewEntries,
+    Map<String, SrsMemory>? srsMemories,
+    String? lastSessionDate,
     int? streakFreezeRemaining,
     bool? isPro,
   }) {
@@ -150,6 +171,8 @@ class UserProgress {
       phonemeScores: phonemeScores ?? this.phonemeScores,
       pronunciationReviewEntries:
           pronunciationReviewEntries ?? this.pronunciationReviewEntries,
+      srsMemories: srsMemories ?? this.srsMemories,
+      lastSessionDate: lastSessionDate ?? this.lastSessionDate,
       streakFreezeRemaining:
           streakFreezeRemaining ?? this.streakFreezeRemaining,
       isPro: isPro ?? this.isPro,
@@ -171,6 +194,34 @@ class UserProgress {
     if (value == null) return {};
     if (value is List) return value.map((e) => e.toString()).toSet();
     return {};
+  }
+
+  static List<PronunciationReviewEntry> _readReviewEntries(dynamic raw) {
+    if (raw is! List) {
+      return const [];
+    }
+    return raw
+        .whereType<Map>()
+        .map(
+          (item) => PronunciationReviewEntry.fromJson(
+            item.map((key, value) => MapEntry(key.toString(), value)),
+          ),
+        )
+        .toList();
+  }
+
+  static Map<String, SrsMemory> _readSrsMemories(dynamic raw) {
+    if (raw is! Map) {
+      return const {};
+    }
+    return raw.map((key, value) {
+      final map = value is Map
+          ? value.map(
+              (itemKey, itemValue) => MapEntry(itemKey.toString(), itemValue),
+            )
+          : <String, dynamic>{};
+      return MapEntry(key.toString(), SrsMemory.fromJson(map));
+    });
   }
 }
 
