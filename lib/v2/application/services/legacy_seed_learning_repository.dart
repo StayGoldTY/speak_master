@@ -430,12 +430,14 @@ class LegacySeedLearningRepository implements V2LearningRepository {
       ...reviewEntryWeakPoints,
     ]..sort((a, b) => a.score.compareTo(b.score));
 
-    final srsQueue = dueMemories.take(8).map((memory) {
+    final srsQueue = [...dueMemories.take(8), ...upcomingMemories.take(6)].map((
+      memory,
+    ) {
       final item = catalogById[memory.itemId];
       return ReviewItem(
         id: memory.itemId,
         label: item?.title ?? memory.itemId,
-        reason: item?.explanation ?? '到期提取，优先复习而不是继续堆新内容。',
+        reason: item?.explanation ?? '已进入间隔重复，到期时再提取。',
         recommendedActivityKind: item?.track == SkillTrack.speaking
             ? ActivityKind.sentenceReadAloud
             : item?.track == SkillTrack.grammar
