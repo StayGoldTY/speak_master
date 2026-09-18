@@ -117,8 +117,9 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                                 Text(
                                   lessonCompleted ? '本课已完成' : '按步骤完成这节课',
                                   style: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w800,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: -0.4,
                                   ),
                                 ),
                                 const SizedBox(height: 8),
@@ -127,9 +128,9 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                                       ? '你已经拿到本课进度，可以直接复习本页内容，或者继续进入下一节。'
                                       : '先看路线卡，再逐个完成活动。完成整课后会自动记录进度并累计 XP。',
                                   style: const TextStyle(
-                                    fontSize: 14,
+                                    fontSize: 17,
                                     color: AppColors.textSecondary,
-                                    height: 1.6,
+                                    height: 1.47,
                                   ),
                                 ),
                               ],
@@ -191,10 +192,10 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                             child: Text(
                               '${_currentIndex + 1}',
                               style: TextStyle(
-                                fontWeight: FontWeight.w800,
+                                fontWeight: FontWeight.w600,
                                 color: currentDone
                                     ? AppColors.successGreen
-                                    : AppColors.primary,
+                                    : AppColors.ink,
                               ),
                             ),
                           ),
@@ -209,8 +210,9 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                                       child: Text(
                                         currentActivity.title,
                                         style: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w800,
+                                          fontSize: 21,
+                                          fontWeight: FontWeight.w600,
+                                          letterSpacing: -0.3,
                                         ),
                                       ),
                                     ),
@@ -291,18 +293,10 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: (isCurrent ? AppColors.primary : Colors.white)
-                            .withValues(alpha: isCurrent ? 0.08 : 0.72),
+                        color: isCurrent
+                            ? AppColors.ink
+                            : AppColors.surfaceMuted,
                         borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color:
-                              (isCompleted
-                                      ? AppColors.successGreen
-                                      : isCurrent
-                                      ? AppColors.primary
-                                      : AppColors.glassBorder)
-                                  .withValues(alpha: 0.45),
-                        ),
                       ),
                       child: Row(
                         children: [
@@ -312,10 +306,10 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                                 : isCurrent
                                 ? Icons.play_circle_fill_rounded
                                 : Icons.menu_book_outlined,
-                            color: isCompleted
+                            color: isCurrent
+                                ? Colors.white
+                                : isCompleted
                                 ? AppColors.successGreen
-                                : isCurrent
-                                ? AppColors.primary
                                 : AppColors.textSecondary,
                           ),
                           const SizedBox(width: 12),
@@ -325,16 +319,21 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                               children: [
                                 Text(
                                   item.title,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: isCurrent
+                                        ? Colors.white
+                                        : AppColors.textPrimary,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
                                   item.subtitle,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
-                                    color: AppColors.textSecondary,
+                                    color: isCurrent
+                                        ? Colors.white70
+                                        : AppColors.textSecondary,
                                   ),
                                 ),
                               ],
@@ -350,8 +349,8 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                             const Text(
                               '当前课程',
                               style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
                               ),
                             ),
                         ],
@@ -369,8 +368,9 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                   Text(
                     lessonCompleted ? '继续学习' : '完成本课',
                     style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.4,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -381,9 +381,9 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                         ? '所有活动都已完成，现在可以结课并记录到学习进度。'
                         : '还差 ${totalCount - completedCount} 个活动未完成，结课按钮会在全部勾选后解锁。',
                     style: const TextStyle(
-                      fontSize: 14,
+                      fontSize: 17,
                       color: AppColors.textSecondary,
-                      height: 1.6,
+                      height: 1.47,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -525,10 +525,10 @@ class _ProgressSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: AppColors.gradientPrimary,
-        borderRadius: BorderRadius.circular(24),
+        color: AppColors.ink,
+        borderRadius: BorderRadius.circular(22),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -536,9 +536,10 @@ class _ProgressSummary extends StatelessWidget {
           const Text(
             '本课完成度',
             style: TextStyle(
-              color: Colors.white70,
+              color: Colors.white54,
               fontSize: 12,
               fontWeight: FontWeight.w600,
+              letterSpacing: 0.4,
             ),
           ),
           const SizedBox(height: 8),
@@ -546,8 +547,9 @@ class _ProgressSummary extends StatelessWidget {
             label,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
+              fontSize: 28,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.6,
             ),
           ),
           const SizedBox(height: 12),
@@ -555,7 +557,7 @@ class _ProgressSummary extends StatelessWidget {
             borderRadius: BorderRadius.circular(999),
             child: LinearProgressIndicator(
               value: progress,
-              minHeight: 10,
+              minHeight: 4,
               backgroundColor: Colors.white.withValues(alpha: 0.18),
               valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
             ),
@@ -583,11 +585,8 @@ class _LessonMetric extends StatelessWidget {
       constraints: const BoxConstraints(minWidth: 180),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: AppColors.glassBorder.withValues(alpha: 0.56),
-        ),
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -596,13 +595,19 @@ class _LessonMetric extends StatelessWidget {
             label,
             style: const TextStyle(
               fontSize: 12,
-              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.4,
+              color: AppColors.textHint,
             ),
           ),
           const SizedBox(height: 6),
           Text(
             value,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.3,
+            ),
           ),
           const SizedBox(height: 4),
           Text(

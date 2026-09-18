@@ -299,7 +299,7 @@ class _PronunciationCoachPanelState
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.bgLight,
+              color: AppColors.surfaceMuted,
               borderRadius: BorderRadius.circular(18),
             ),
             child: SelectionArea(
@@ -307,9 +307,11 @@ class _PronunciationCoachPanelState
                 _referenceText,
                 key: ValueKey('speech-reference-$_panelId'),
                 style: const TextStyle(
-                  fontSize: 14,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.6,
                   color: AppColors.textPrimary,
-                  height: 1.65,
+                  height: 1.25,
                 ),
               ),
             ),
@@ -934,10 +936,11 @@ class _SectionHeader extends StatelessWidget {
         const SizedBox(width: 8),
         Text(
           title,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w800,
-            color: color,
+          style: const TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.2,
+            color: AppColors.ink,
           ),
         ),
       ],
@@ -1018,7 +1021,11 @@ class _LearnerRecordingCard extends StatelessWidget {
         children: [
           const Text(
             '我的跟读录音',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.2,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -1093,8 +1100,9 @@ class _AutomaticCheckCard extends StatelessWidget {
                 child: Text(
                   '词级对齐（识别辅助）',
                   style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.2,
                   ),
                 ),
               ),

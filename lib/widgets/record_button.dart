@@ -12,24 +12,25 @@ class RecordButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: isRecording ? 80 : 72,
-        height: isRecording ? 80 : 72,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        width: isRecording ? 84 : 76,
+        height: isRecording ? 84 : 76,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: isRecording ? AppColors.errorRed : AppColors.primary,
+          color: isRecording ? AppColors.errorRed : AppColors.ink,
           boxShadow: [
             BoxShadow(
-              color: (isRecording ? AppColors.errorRed : AppColors.primary).withValues(alpha: 0.3),
-              blurRadius: isRecording ? 20 : 12,
-              spreadRadius: isRecording ? 4 : 0,
+              color: AppColors.ink.withValues(alpha: isRecording ? 0.12 : 0.18),
+              blurRadius: isRecording ? 24 : 18,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
         child: Icon(
-          isRecording ? Icons.stop : Icons.mic,
+          isRecording ? Icons.stop_rounded : Icons.mic_rounded,
           color: Colors.white,
-          size: isRecording ? 36 : 32,
+          size: isRecording ? 34 : 30,
         ),
       ),
     );

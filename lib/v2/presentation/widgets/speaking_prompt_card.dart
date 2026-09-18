@@ -67,14 +67,16 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
       key: widget.highlighted
           ? ValueKey('speaking-prompt-focused-${widget.prompt.id}')
           : ValueKey('speaking-prompt-${widget.prompt.id}'),
-      padding: widget.highlighted ? const EdgeInsets.all(2) : EdgeInsets.zero,
       decoration: widget.highlighted
           ? BoxDecoration(
               borderRadius: BorderRadius.circular(30),
-              border: Border.all(
-                color: widget.accentColor.withValues(alpha: 0.6),
-                width: 2,
-              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.ink.withValues(alpha: 0.18),
+                  blurRadius: 28,
+                  offset: const Offset(0, 12),
+                ),
+              ],
             )
           : null,
       child: V2InfoCard(
@@ -82,7 +84,7 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (widget.highlighted) ...[
-              V2Pill(label: '当前推荐从这里开始', color: widget.accentColor),
+              const V2Pill(label: '当前推荐从这里开始', color: AppColors.ink),
               const SizedBox(height: 12),
             ],
             Wrap(
@@ -107,15 +109,19 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
             const SizedBox(height: 14),
             Text(
               widget.prompt.title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.4,
+              ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Text(
               widget.prompt.scenario,
               style: const TextStyle(
-                fontSize: 14,
+                fontSize: 17,
                 color: AppColors.textSecondary,
-                height: 1.6,
+                height: 1.47,
               ),
             ),
             if (widget.prompt.checklist.isNotEmpty) ...[
@@ -454,8 +460,9 @@ class _PronunciationRouteSection extends StatelessWidget {
             Text(
               '五步发音路线',
               style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.2,
                 color: accentColor,
               ),
             ),
@@ -504,9 +511,8 @@ class _PronunciationRouteStageChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: accentColor.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: accentColor.withValues(alpha: 0.12)),
+          color: AppColors.surfaceMuted,
+          borderRadius: BorderRadius.circular(18),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -522,7 +528,7 @@ class _PronunciationRouteStageChip extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 13,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                       color: accentColor,
                     ),
                   ),
@@ -552,7 +558,6 @@ class _PronunciationRouteStageChip extends StatelessWidget {
                     ),
                     label: entry.$2,
                     selected: entry.$2 == selectedText,
-                    accentColor: accentColor,
                     onTap: () => onSelectItem(stage, entry.$2),
                   ),
               ],
@@ -584,14 +589,12 @@ class _ActivePronunciationMaterial {
 class _RouteItemButton extends StatelessWidget {
   final String label;
   final bool selected;
-  final Color accentColor;
   final VoidCallback onTap;
 
   const _RouteItemButton({
     super.key,
     required this.label,
     required this.selected,
-    required this.accentColor,
     required this.onTap,
   });
 
@@ -606,9 +609,8 @@ class _RouteItemButton extends StatelessWidget {
           constraints: const BoxConstraints(maxWidth: 150),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
           decoration: BoxDecoration(
-            color: selected ? accentColor : accentColor.withValues(alpha: 0.08),
+            color: selected ? AppColors.ink : AppColors.fillTertiary,
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: accentColor.withValues(alpha: 0.14)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -618,7 +620,7 @@ class _RouteItemButton extends StatelessWidget {
                     ? Icons.check_circle_rounded
                     : Icons.play_arrow_rounded,
                 size: 16,
-                color: selected ? Colors.white : accentColor,
+                color: selected ? Colors.white : AppColors.ink,
               ),
               const SizedBox(width: 4),
               Flexible(
@@ -628,8 +630,8 @@ class _RouteItemButton extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: selected ? Colors.white : accentColor,
+                    fontWeight: FontWeight.w600,
+                    color: selected ? Colors.white : AppColors.ink,
                   ),
                 ),
               ),
@@ -660,9 +662,8 @@ class _DrillSection extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: accentColor.withValues(alpha: 0.06),
+        color: AppColors.surfaceMuted,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: accentColor.withValues(alpha: 0.12)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -670,8 +671,9 @@ class _DrillSection extends StatelessWidget {
           Text(
             title,
             style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.2,
               color: accentColor,
             ),
           ),
@@ -724,9 +726,8 @@ class _VariationSection extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surfaceMuted,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.grey.shade200),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -734,8 +735,9 @@ class _VariationSection extends StatelessWidget {
           Text(
             '自然变体开口',
             style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.2,
               color: accentColor,
             ),
           ),
@@ -815,7 +817,7 @@ class _SpeechFeedbackSummary extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.06),
+        color: AppColors.surfaceMuted,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
@@ -827,7 +829,7 @@ class _SpeechFeedbackSummary extends StatelessWidget {
                 child: Text(
                   '本次学习反馈',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
@@ -986,9 +988,8 @@ class _AssessmentReportSummary extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surfaceMuted,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade200),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -999,7 +1000,7 @@ class _AssessmentReportSummary extends StatelessWidget {
                 child: Text(
                   '测评报告',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
@@ -1072,7 +1073,7 @@ class _AttemptHistorySummary extends StatelessWidget {
             '最近记录',
             style: Theme.of(
               context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 12),
           ...attempts.map(

@@ -79,8 +79,10 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
         break;
       }
     }
+    final progressValue = _queue.isEmpty ? 0.0 : _index / _queue.length;
 
     return Scaffold(
+      backgroundColor: AppColors.bgLight,
       appBar: AppBar(
         title: const Text('今日学习循环'),
         leading: IconButton(
@@ -91,12 +93,15 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
       body: V2PageScaffold(
         title: '一条循环，三种技能',
         subtitle: plan.subtitle,
+        compactHeader: true,
+        includeSafeArea: false,
+        eyebrow: 'Session',
         actions: [
           V2Pill(
             label: '${_index + 1} / ${_queue.length}',
-            color: AppColors.primary,
+            color: AppColors.ink,
           ),
-          V2Pill(label: item.track.label, color: AppColors.secondary),
+          V2Pill(label: item.track.label, color: AppColors.textSecondary),
           V2Pill(
             label: _isNew(item) ? '新项目' : '到期提取',
             color: _isNew(item)
@@ -107,12 +112,16 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            LinearProgressIndicator(
-              value: _queue.isEmpty ? 0 : _index / _queue.length,
-              minHeight: 8,
+            ClipRRect(
               borderRadius: BorderRadius.circular(99),
+              child: LinearProgressIndicator(
+                value: progressValue,
+                minHeight: 4,
+                backgroundColor: AppColors.fillTertiary,
+                color: AppColors.ink,
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 28),
             V2InfoCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -121,32 +130,35 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                     item.kind.label,
                     key: const ValueKey('session-kind-label'),
                     style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.4,
+                      color: AppColors.textHint,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 12),
                   Text(
                     item.title,
                     style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 32,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.8,
+                      height: 1.1,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   Text(
                     item.contextCueZh,
                     style: const TextStyle(
-                      fontSize: 14,
-                      height: 1.6,
+                      fontSize: 17,
+                      height: 1.47,
                       color: AppColors.textSecondary,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             _PromptBody(
               item: item,
               prompt: prompt,
@@ -163,13 +175,13 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
               }),
             ),
             if (_revealed) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
               _FeedbackPanel(
                 item: item,
                 typed: _typed,
                 selectedOptionId: _selectedOptionId,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
               _GradeRow(memory: memory, item: item, onGrade: _grade),
             ],
           ],
@@ -267,15 +279,20 @@ class _PromptBody extends StatelessWidget {
                   item.cue,
                   key: const ValueKey('session-cue'),
                   style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    height: 1.5,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.6,
+                    height: 1.2,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 Text(
                   item.target,
-                  style: const TextStyle(fontSize: 16, height: 1.6),
+                  style: const TextStyle(
+                    fontSize: 17,
+                    height: 1.47,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -284,11 +301,11 @@ class _PromptBody extends StatelessWidget {
             const SizedBox(height: 12),
             SpeakingPromptCard(
               prompt: prompt!,
-              accentColor: AppColors.secondary,
+              accentColor: AppColors.ink,
               compact: true,
             ),
           ],
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           if (!revealed)
             FilledButton(
               key: const ValueKey('session-reveal-button'),
@@ -309,21 +326,22 @@ class _PromptBody extends StatelessWidget {
               item.cue,
               key: const ValueKey('session-cue'),
               style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                height: 1.5,
+                fontSize: 28,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.6,
+                height: 1.2,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Text(
               item.contextSentence,
               style: const TextStyle(
-                fontSize: 14,
+                fontSize: 17,
                 color: AppColors.textSecondary,
-                height: 1.6,
+                height: 1.47,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             ...item.options.map((option) {
               final selected = selectedOptionId == option.id;
               return Padding(
@@ -337,16 +355,25 @@ class _PromptBody extends StatelessWidget {
                           onReveal();
                         },
                   borderRadius: BorderRadius.circular(18),
-                  child: Container(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
                     width: double.infinity,
-                    padding: const EdgeInsets.all(14),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 16,
+                    ),
                     decoration: BoxDecoration(
-                      color: selected
-                          ? AppColors.primary.withValues(alpha: 0.1)
-                          : AppColors.bgLight,
+                      color: selected ? AppColors.ink : AppColors.surfaceMuted,
                       borderRadius: BorderRadius.circular(18),
                     ),
-                    child: Text(option.label),
+                    child: Text(
+                      option.label,
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w500,
+                        color: selected ? Colors.white : AppColors.textPrimary,
+                      ),
+                    ),
                   ),
                 ),
               );
@@ -366,22 +393,22 @@ class _PromptBody extends StatelessWidget {
               item.cue,
               key: const ValueKey('session-cue'),
               style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                height: 1.5,
+                fontSize: 28,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.6,
+                height: 1.2,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             TextField(
               key: const ValueKey('session-generate-field'),
               enabled: !revealed,
               onChanged: onTyped,
               decoration: const InputDecoration(
                 hintText: '先自己写，再揭晓',
-                border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             if (!revealed)
               FilledButton(
                 key: const ValueKey('session-check-generation'),
@@ -400,18 +427,23 @@ class _PromptBody extends StatelessWidget {
           Text(
             item.cue,
             key: const ValueKey('session-cue'),
-            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+            style: const TextStyle(
+              fontSize: 40,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -1.2,
+              height: 1.08,
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
             item.contextSentence,
             style: const TextStyle(
-              fontSize: 14,
-              height: 1.6,
+              fontSize: 17,
+              height: 1.47,
               color: AppColors.textSecondary,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 22),
           if (!revealed)
             FilledButton(
               key: const ValueKey('session-reveal-button'),
@@ -447,43 +479,56 @@ class _FeedbackPanel extends StatelessWidget {
         selectedOptionId == item.correctOptionId;
 
     return V2InfoCard(
+      color: AppColors.surfaceMuted,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             item.target,
             key: const ValueKey('session-target'),
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.6,
+              height: 1.15,
+            ),
           ),
           if (item.kind == LearningItemKind.generateEnglish ||
               item.kind == LearningItemKind.grammarProduce) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Text(
               typed.trim().isEmpty
                   ? '你还没写出答案。没关系，按真实提取难度打分。'
                   : generatedOk
                   ? '你的产出已经贴近目标。'
                   : '先记住这次没提取完整，稍后再试，不必立刻重抄。',
-              style: const TextStyle(height: 1.55),
+              style: const TextStyle(fontSize: 17, height: 1.47),
             ),
           ],
           if (item.kind == LearningItemKind.grammarNotice) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Text(
               noticedOk ? '你注意到了关键形式。' : '这次没注意到也正常。看完解释，按费力程度安排下次。',
-              style: const TextStyle(height: 1.55),
+              style: const TextStyle(fontSize: 17, height: 1.47),
             ),
           ],
-          const SizedBox(height: 10),
-          Text(item.explanation, style: const TextStyle(height: 1.65)),
+          const SizedBox(height: 12),
+          Text(
+            item.explanation,
+            style: const TextStyle(
+              fontSize: 17,
+              height: 1.47,
+              color: AppColors.textSecondary,
+            ),
+          ),
           if ((item.morphologyNote ?? '').isNotEmpty) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Text(
               '构词：${item.morphologyNote}',
               style: const TextStyle(
-                fontSize: 13,
+                fontSize: 15,
                 color: AppColors.textSecondary,
-                height: 1.55,
+                height: 1.5,
               ),
             ),
           ],
@@ -492,9 +537,9 @@ class _FeedbackPanel extends StatelessWidget {
             Text(
               '画面 / 口型：${item.dualCodeHint}',
               style: const TextStyle(
-                fontSize: 13,
+                fontSize: 15,
                 color: AppColors.textSecondary,
-                height: 1.55,
+                height: 1.5,
               ),
             ),
           ],
@@ -524,43 +569,53 @@ class _GradeRow extends StatelessWidget {
       children: [
         const Text(
           '这次提取有多费力？下次见面时间会按此安排。',
-          style: TextStyle(fontWeight: FontWeight.w700),
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.2,
+          ),
         ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: grades.map((grade) {
-            final preview = scheduler.preview(
-              memory: memory,
-              grade: grade,
-              track: item.track,
-            );
-            return SizedBox(
-              width: 150,
-              child: OutlinedButton(
-                key: ValueKey('session-grade-${grade.key}'),
-                onPressed: () => onGrade(grade),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Column(
-                    children: [
-                      Text(grade.label),
-                      const SizedBox(height: 4),
-                      Text(
-                        preview.dueLabel,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textSecondary,
-                        ),
+        const SizedBox(height: 16),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final wide = constraints.maxWidth > 640;
+            return Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: grades.map((grade) {
+                final preview = scheduler.preview(
+                  memory: memory,
+                  grade: grade,
+                  track: item.track,
+                );
+                return SizedBox(
+                  width: wide ? 168 : (constraints.maxWidth - 10) / 2,
+                  child: OutlinedButton(
+                    key: ValueKey('session-grade-${grade.key}'),
+                    onPressed: () => onGrade(grade),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Column(
+                        children: [
+                          Text(grade.label),
+                          const SizedBox(height: 4),
+                          Text(
+                            preview.dueLabel,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
+                );
+              }).toList(),
             );
-          }).toList(),
+          },
         ),
       ],
     );
@@ -588,10 +643,13 @@ class _SessionSummary extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final snapshot = ref.watch(v2MasterySnapshotProvider);
     return Scaffold(
+      backgroundColor: AppColors.bgLight,
       appBar: AppBar(title: const Text('本轮结束')),
       body: V2PageScaffold(
         title: '提取完成，间隔开始生效',
         subtitle: '成功提取的项目会排到明天或更晚；没提取出来的会在短间隔后再见。不要熬夜加练同一张。',
+        compactHeader: true,
+        includeSafeArea: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -602,66 +660,66 @@ class _SessionSummary extends ConsumerWidget {
                   Text(
                     '本轮完成 $reviewed 个项目',
                     style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 32,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.8,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   Text(
                     lastTeacherNote ?? recommendedFocus,
                     key: const ValueKey('session-next-due-label'),
-                    style: const TextStyle(height: 1.65),
+                    style: const TextStyle(
+                      fontSize: 17,
+                      height: 1.47,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                   if (lastDueLabel != null) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     V2Pill(
                       label: '最近一次安排：$lastDueLabel',
-                      color: AppColors.primary,
+                      color: AppColors.ink,
                     ),
                   ],
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             Wrap(
-              spacing: 12,
-              runSpacing: 12,
+              spacing: 24,
+              runSpacing: 16,
               children: [
-                V2Pill(
-                  label: '仍到期 $dueTodayCount',
-                  color: AppColors.accentOrange,
-                ),
-                V2Pill(
-                  label: '已排期 $upcomingCount',
-                  color: AppColors.successGreen,
-                ),
-                V2Pill(
-                  label: '${snapshot.totalXp} XP',
-                  color: AppColors.xpGold,
-                ),
+                V2SpecMetric(label: '仍到期', value: '$dueTodayCount'),
+                V2SpecMetric(label: '已排期', value: '$upcomingCount'),
+                V2SpecMetric(label: '累计 XP', value: '${snapshot.totalXp}'),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 36),
             const V2SectionTitle(
               title: '接下来怎么复习',
               subtitle: '打开进度页可以看到每张卡片的下次见面时间。睡眠本身就是学习循环的一部分。',
             ),
-            V2InfoCard(
-              child: Column(
-                children: snapshot.reviewQueue.isEmpty
-                    ? const [Text('当前没有待提取队列。明天同一时间回来即可。')]
-                    : snapshot.reviewQueue
+            snapshot.reviewQueue.isEmpty
+                ? const V2EmptyState(
+                    title: '当前没有待提取队列',
+                    body: '明天同一时间回来即可。间隔正在替你工作。',
+                  )
+                : V2InfoCard(
+                    child: Column(
+                      children: snapshot.reviewQueue
                           .take(5)
                           .map(
                             (item) => Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
+                              padding: const EdgeInsets.only(bottom: 14),
                               child: Row(
                                 children: [
                                   Expanded(
                                     child: Text(
                                       item.label,
                                       style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                   ),
@@ -670,28 +728,28 @@ class _SessionSummary extends ConsumerWidget {
                                         item.dueLabel ??
                                         item.trackLabel ??
                                         '已安排',
-                                    color: AppColors.secondary,
+                                    color: AppColors.textSecondary,
                                   ),
                                 ],
                               ),
                             ),
                           )
                           .toList(),
-              ),
-            ),
-            const SizedBox(height: 20),
+                    ),
+                  ),
+            const SizedBox(height: 28),
             Wrap(
               spacing: 12,
               runSpacing: 12,
               children: [
                 FilledButton.icon(
                   onPressed: () => context.go('/today'),
-                  icon: const Icon(Icons.today_rounded),
+                  icon: const Icon(Icons.wb_sunny_rounded),
                   label: const Text('返回今日'),
                 ),
                 OutlinedButton.icon(
                   onPressed: () => context.go('/progress'),
-                  icon: const Icon(Icons.auto_graph_rounded),
+                  icon: const Icon(Icons.insights_rounded),
                   label: const Text('查看复习排期'),
                 ),
               ],

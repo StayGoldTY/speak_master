@@ -103,8 +103,9 @@ class _MinimalPairActivityCard extends StatelessWidget {
               Text(
                 activity.instruction,
                 style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.2,
                 ),
               ),
               const SizedBox(height: 14),
@@ -178,7 +179,7 @@ class _McqActivityCardState extends State<_McqActivityCard> {
         children: [
           Text(
             widget.activity.instruction,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
           ),
           if ((widget.activity.content ?? '').isNotEmpty) ...[
             const SizedBox(height: 8),
