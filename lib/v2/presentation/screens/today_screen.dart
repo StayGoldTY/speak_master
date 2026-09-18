@@ -118,16 +118,32 @@ class TodayScreen extends ConsumerWidget {
                 inverted: true,
               ),
             ],
-            action: Wrap(
-              spacing: 10,
-              runSpacing: 10,
+            action: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                V2Pill(label: learner.goal.title, color: Colors.white),
-                V2Pill(
-                  label: learner.placementLevel.title,
-                  color: Colors.white,
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    V2Pill(label: learner.goal.title, color: Colors.white),
+                    V2Pill(
+                      label: learner.placementLevel.title,
+                      color: Colors.white,
+                    ),
+                    V2Pill(label: learner.accentLabel, color: Colors.white),
+                  ],
                 ),
-                V2Pill(label: learner.accentLabel, color: Colors.white),
+                const SizedBox(height: 24),
+                FilledButton.icon(
+                  key: const ValueKey('today-session-cta'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: AppColors.ink,
+                  ),
+                  onPressed: () => context.push('/session'),
+                  icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                  label: const Text('开始今日循环'),
+                ),
               ],
             ),
           ),
@@ -171,12 +187,10 @@ class TodayScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
-                FilledButton.icon(
-                  key: const ValueKey('today-session-cta'),
+                const SizedBox(height: 8),
+                TextButton(
                   onPressed: () => context.push('/session'),
-                  icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                  label: const Text('开始今日循环'),
+                  child: const Text('直接进入循环'),
                 ),
               ],
             ),

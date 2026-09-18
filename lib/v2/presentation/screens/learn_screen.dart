@@ -134,6 +134,13 @@ class LearnScreen extends ConsumerWidget {
                           height: 1.47,
                         ),
                       ),
+                      const SizedBox(height: 22),
+                      FilledButton.icon(
+                        onPressed: () =>
+                            context.push('/lesson/${recommendedLesson.id}'),
+                        icon: const Icon(Icons.play_arrow_rounded),
+                        label: const Text('开始当前推荐'),
+                      ),
                       const SizedBox(height: 20),
                       Wrap(
                         spacing: 24,
@@ -155,13 +162,6 @@ class LearnScreen extends ConsumerWidget {
                                 '${recommendedLesson.estimatedMinutes} 分钟',
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 22),
-                      FilledButton.icon(
-                        onPressed: () =>
-                            context.push('/lesson/${recommendedLesson.id}'),
-                        icon: const Icon(Icons.play_arrow_rounded),
-                        label: const Text('开始当前推荐'),
                       ),
                     ],
                   ),

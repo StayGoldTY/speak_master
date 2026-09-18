@@ -61,7 +61,7 @@ class UnifiedSessionComposer {
       items: queue,
       dueCount: dueTake.length,
       newCount: newTake.length,
-      headline: '${learner.displayName} 的今日循环',
+      headline: '${learner.displayName.trim()}的今日循环',
       subtitle: dueTake.isEmpty
           ? '先学一点点新内容，词汇、语法和开口交错进行；成功提取后会排到明天，让睡眠帮忙巩固。'
           : '先提取到期复习（${dueTake.length}），再加入 ${newTake.length} 个新项目。到期项优先，避免只往前赶新课。',

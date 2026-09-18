@@ -289,7 +289,7 @@ class LegacySeedLearningRepository implements V2LearningRepository {
     final allocation = _allocatePlanMinutes(learner.dailyMinutes);
 
     return DailyPlan(
-      headline: '$learnerName 的今日学习',
+      headline: '${learnerName.trim()}的今日学习',
       subtitle: _buildPlanSubtitle(learner, sessionPlan),
       items: [
         DailyPlanItem(

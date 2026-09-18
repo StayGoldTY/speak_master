@@ -38,7 +38,7 @@ class V2PageScaffold extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 980),
         child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(horizontal, top, horizontal, 132),
+          padding: EdgeInsets.fromLTRB(horizontal, top, horizontal, 168),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

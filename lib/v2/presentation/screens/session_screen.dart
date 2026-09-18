@@ -592,6 +592,11 @@ class _GradeRow extends StatelessWidget {
                   width: wide ? 168 : (constraints.maxWidth - 10) / 2,
                   child: OutlinedButton(
                     key: ValueKey('session-grade-${grade.key}'),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: AppColors.ink,
+                      side: const BorderSide(color: AppColors.hairline),
+                    ),
                     onPressed: () => onGrade(grade),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8),
