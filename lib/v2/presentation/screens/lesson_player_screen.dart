@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../providers/progress_provider.dart';
 import '../../application/providers/v2_providers.dart';
+import '../../application/services/learning_loop_bridge.dart';
 import '../../domain/models/course_models.dart';
 import '../widgets/activity_blueprint_view.dart';
 import '../widgets/v2_page_scaffold.dart';
@@ -21,6 +22,7 @@ class LessonPlayerScreen extends ConsumerStatefulWidget {
 class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
   final Set<String> _completedActivities = <String>{};
   bool _submitting = false;
+  int _currentIndex = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +51,15 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
     final allActivitiesDone = completedCount >= totalCount;
     final canFinishLesson =
         !lessonCompleted && allActivitiesDone && !_submitting;
+    final currentActivity = lesson.activities.isEmpty
+        ? null
+        : lesson.activities[_currentIndex.clamp(
+            0,
+            lesson.activities.length - 1,
+          )];
+    final currentDone =
+        currentActivity != null &&
+        _completedActivities.contains(currentActivity.id);
 
     return Scaffold(
       appBar: AppBar(title: Text(lesson.title)),
@@ -106,8 +117,9 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                                 Text(
                                   lessonCompleted ? '本课已完成' : '按步骤完成这节课',
                                   style: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w800,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: -0.4,
                                   ),
                                 ),
                                 const SizedBox(height: 8),
@@ -116,9 +128,9 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                                       ? '你已经拿到本课进度，可以直接复习本页内容，或者继续进入下一节。'
                                       : '先看路线卡，再逐个完成活动。完成整课后会自动记录进度并累计 XP。',
                                   style: const TextStyle(
-                                    fontSize: 14,
+                                    fontSize: 17,
                                     color: AppColors.textSecondary,
-                                    height: 1.6,
+                                    height: 1.47,
                                   ),
                                 ),
                               ],
@@ -152,15 +164,11 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
             ),
             const SizedBox(height: 24),
             const V2SectionTitle(
-              title: '学习路线',
-              subtitle: '每完成一个活动就勾选一次，形成清晰的完成反馈，而不是只看一堆内容。',
+              title: '当前活动',
+              subtitle: '一次只做一个，降低工作记忆负担。做完自动进入下一项。',
             ),
-            ...lesson.activities.asMap().entries.map((entry) {
-              final index = entry.key;
-              final activity = entry.value;
-              final isDone = _completedActivities.contains(activity.id);
-
-              return Padding(
+            if (currentActivity != null)
+              Padding(
                 padding: const EdgeInsets.only(bottom: 14),
                 child: V2InfoCard(
                   child: Column(
@@ -174,7 +182,7 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                             height: 42,
                             decoration: BoxDecoration(
                               color:
-                                  (isDone
+                                  (currentDone
                                           ? AppColors.successGreen
                                           : AppColors.primary)
                                       .withValues(alpha: 0.12),
@@ -182,12 +190,12 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                             ),
                             alignment: Alignment.center,
                             child: Text(
-                              '${index + 1}',
+                              '${_currentIndex + 1}',
                               style: TextStyle(
-                                fontWeight: FontWeight.w800,
-                                color: isDone
+                                fontWeight: FontWeight.w600,
+                                color: currentDone
                                     ? AppColors.successGreen
-                                    : AppColors.primary,
+                                    : AppColors.ink,
                               ),
                             ),
                           ),
@@ -200,16 +208,17 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                                   children: [
                                     Expanded(
                                       child: Text(
-                                        activity.title,
+                                        currentActivity.title,
                                         style: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w800,
+                                          fontSize: 21,
+                                          fontWeight: FontWeight.w600,
+                                          letterSpacing: -0.3,
                                         ),
                                       ),
                                     ),
                                     V2Pill(
-                                      label: activity.kind.label,
-                                      color: isDone
+                                      label: currentActivity.kind.label,
+                                      color: currentDone
                                           ? AppColors.successGreen
                                           : AppColors.primary,
                                     ),
@@ -217,7 +226,7 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
-                                  activity.instruction,
+                                  currentActivity.instruction,
                                   style: const TextStyle(
                                     fontSize: 13,
                                     color: AppColors.textSecondary,
@@ -230,34 +239,43 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      ActivityBlueprintView(activity: activity),
+                      ActivityBlueprintView(activity: currentActivity),
                       const SizedBox(height: 14),
                       Align(
                         alignment: Alignment.centerRight,
                         child: OutlinedButton.icon(
-                          key: ValueKey('complete-activity-${activity.id}'),
+                          key: ValueKey(
+                            'complete-activity-${currentActivity.id}',
+                          ),
                           onPressed: () {
+                            final activity = currentActivity;
+                            final isDone = _completedActivities.contains(
+                              activity.id,
+                            );
                             setState(() {
                               if (isDone) {
                                 _completedActivities.remove(activity.id);
                               } else {
                                 _completedActivities.add(activity.id);
+                                if (_currentIndex <
+                                    lesson.activities.length - 1) {
+                                  _currentIndex += 1;
+                                }
                               }
                             });
                           },
                           icon: Icon(
-                            isDone
+                            currentDone
                                 ? Icons.check_circle_rounded
                                 : Icons.radio_button_unchecked_rounded,
                           ),
-                          label: Text(isDone ? '已完成此活动' : '标记为已完成'),
+                          label: Text(currentDone ? '已完成此活动' : '标记为已完成'),
                         ),
                       ),
                     ],
                   ),
                 ),
-              );
-            }),
+              ),
             const V2SectionTitle(
               title: '单元内课程',
               subtitle: '学完本节后不要中断，继续主线才能真正形成留存。',
@@ -275,18 +293,10 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: (isCurrent ? AppColors.primary : Colors.white)
-                            .withValues(alpha: isCurrent ? 0.08 : 0.72),
+                        color: isCurrent
+                            ? AppColors.ink
+                            : AppColors.surfaceMuted,
                         borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color:
-                              (isCompleted
-                                      ? AppColors.successGreen
-                                      : isCurrent
-                                      ? AppColors.primary
-                                      : AppColors.glassBorder)
-                                  .withValues(alpha: 0.45),
-                        ),
                       ),
                       child: Row(
                         children: [
@@ -296,10 +306,10 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                                 : isCurrent
                                 ? Icons.play_circle_fill_rounded
                                 : Icons.menu_book_outlined,
-                            color: isCompleted
+                            color: isCurrent
+                                ? Colors.white
+                                : isCompleted
                                 ? AppColors.successGreen
-                                : isCurrent
-                                ? AppColors.primary
                                 : AppColors.textSecondary,
                           ),
                           const SizedBox(width: 12),
@@ -309,16 +319,21 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                               children: [
                                 Text(
                                   item.title,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: isCurrent
+                                        ? Colors.white
+                                        : AppColors.textPrimary,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
                                   item.subtitle,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
-                                    color: AppColors.textSecondary,
+                                    color: isCurrent
+                                        ? Colors.white70
+                                        : AppColors.textSecondary,
                                   ),
                                 ),
                               ],
@@ -334,8 +349,8 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                             const Text(
                               '当前课程',
                               style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
                               ),
                             ),
                         ],
@@ -353,8 +368,9 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                   Text(
                     lessonCompleted ? '继续学习' : '完成本课',
                     style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.4,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -365,9 +381,9 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                         ? '所有活动都已完成，现在可以结课并记录到学习进度。'
                         : '还差 ${totalCount - completedCount} 个活动未完成，结课按钮会在全部勾选后解锁。',
                     style: const TextStyle(
-                      fontSize: 14,
+                      fontSize: 17,
                       color: AppColors.textSecondary,
-                      height: 1.6,
+                      height: 1.47,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -444,6 +460,14 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
         await notifier.completeUnit(lesson.unitId);
       }
 
+      final unlocked = const LearningLoopBridge().unlockForLesson(
+        lessonId: lesson.id,
+        existing: updatedProgress.srsMemories,
+      );
+      if (unlocked.isNotEmpty) {
+        await notifier.upsertSrsMemories(unlocked);
+      }
+
       if (!mounted) {
         return;
       }
@@ -452,8 +476,14 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
         SnackBar(
           content: Text(
             unitFullyCompleted
-                ? '已完成 ${lesson.title}，并解锁整单元完成记录。'
-                : '已完成 ${lesson.title}，进度和 XP 已记录。',
+                ? '已完成 ${lesson.title}，相关项目已进入今日循环。'
+                : unlocked.isEmpty
+                ? '已完成 ${lesson.title}，进度和 XP 已记录。'
+                : '已完成 ${lesson.title}。${unlocked.length} 个项目已加入提取循环。',
+          ),
+          action: SnackBarAction(
+            label: '去提取',
+            onPressed: () => context.go('/session'),
           ),
         ),
       );
@@ -495,10 +525,10 @@ class _ProgressSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: AppColors.gradientPrimary,
-        borderRadius: BorderRadius.circular(24),
+        color: AppColors.ink,
+        borderRadius: BorderRadius.circular(22),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -506,9 +536,10 @@ class _ProgressSummary extends StatelessWidget {
           const Text(
             '本课完成度',
             style: TextStyle(
-              color: Colors.white70,
+              color: Colors.white54,
               fontSize: 12,
               fontWeight: FontWeight.w600,
+              letterSpacing: 0.4,
             ),
           ),
           const SizedBox(height: 8),
@@ -516,8 +547,9 @@ class _ProgressSummary extends StatelessWidget {
             label,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
+              fontSize: 28,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.6,
             ),
           ),
           const SizedBox(height: 12),
@@ -525,7 +557,7 @@ class _ProgressSummary extends StatelessWidget {
             borderRadius: BorderRadius.circular(999),
             child: LinearProgressIndicator(
               value: progress,
-              minHeight: 10,
+              minHeight: 4,
               backgroundColor: Colors.white.withValues(alpha: 0.18),
               valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
             ),
@@ -553,11 +585,8 @@ class _LessonMetric extends StatelessWidget {
       constraints: const BoxConstraints(minWidth: 180),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: AppColors.glassBorder.withValues(alpha: 0.56),
-        ),
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -566,13 +595,19 @@ class _LessonMetric extends StatelessWidget {
             label,
             style: const TextStyle(
               fontSize: 12,
-              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.4,
+              color: AppColors.textHint,
             ),
           ),
           const SizedBox(height: 6),
           Text(
             value,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.3,
+            ),
           ),
           const SizedBox(height: 4),
           Text(

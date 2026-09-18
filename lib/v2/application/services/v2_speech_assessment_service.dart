@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../services/azure_pronunciation_client.dart';
 import '../../../services/pronunciation_check_engine.dart';
 import '../../../services/pronunciation_practice_service.dart';
 import '../../../services/recording_upload_payload.dart';
@@ -15,14 +16,17 @@ class V2SpeechAssessmentService {
   final SupabaseClient? _client;
   final SpeechFeedbackEngine _feedbackEngine;
   final LocalAssessmentReportBuilder _reportBuilder;
+  final AzurePronunciationClient _azureClient;
 
-  const V2SpeechAssessmentService({
+  V2SpeechAssessmentService({
     required SupabaseClient? client,
     required SpeechFeedbackEngine feedbackEngine,
     required LocalAssessmentReportBuilder reportBuilder,
+    AzurePronunciationClient? azureClient,
   }) : _client = client,
        _feedbackEngine = feedbackEngine,
-       _reportBuilder = reportBuilder;
+       _reportBuilder = reportBuilder,
+       _azureClient = azureClient ?? AzurePronunciationClient.fromEnv();
 
   Future<SpeakingAssessmentResult> submitAttempt({
     required SpeakingPrompt prompt,
@@ -37,38 +41,140 @@ class V2SpeechAssessmentService {
       learnerRecording: learnerRecording,
     );
 
+    final uploadPayload = await _payloadFor(learnerRecording);
     final client = _client;
-    if (client == null || client.auth.currentUser == null) {
-      return fallback;
+    if (client != null && client.auth.currentUser != null) {
+      try {
+        final response = await client.functions.invoke(
+          'submit-speaking-attempt',
+          body: {
+            'promptId': prompt.id,
+            'activityKind': _activityKindKey(prompt.kind),
+            'accentPreference': accentPreference,
+            'referenceText': prompt.referenceText,
+            'focusWords': prompt.focusWords,
+            'transcriptHint': localResult.transcript,
+            'audioBase64': uploadPayload == null
+                ? null
+                : base64Encode(uploadPayload.bytes),
+            'audioMimeType': uploadPayload?.mimeType,
+            'audioFilename': uploadPayload?.filename,
+            'audioDurationMs': learnerRecording?.duration.inMilliseconds,
+          },
+        );
+
+        return _mapFunctionResult(_asMap(response.data));
+      } catch (_) {
+        // Continue to on-device Azure or local alignment.
+      }
+    }
+
+    final azure = await _assessWithAzure(
+      payload: uploadPayload,
+      referenceText: prompt.referenceText,
+      accentPreference: accentPreference,
+    );
+    if (azure != null) {
+      return _buildFromAzure(
+        prompt: prompt,
+        accentPreference: accentPreference,
+        localResult: localResult,
+        learnerRecording: learnerRecording,
+        azure: azure,
+      );
+    }
+
+    return fallback;
+  }
+
+  SpeakingAssessmentResult _buildFromAzure({
+    required SpeakingPrompt prompt,
+    required String accentPreference,
+    required PronunciationCheckResult localResult,
+    LearnerRecording? learnerRecording,
+    required AzurePronunciationAssessment azure,
+  }) {
+    final feedback = _feedbackEngine.build(
+      result: localResult,
+      prompt: prompt,
+      fallbackUsed: false,
+      azure: azure,
+    );
+    final report = _reportBuilder.build(
+      feedback: feedback,
+      recommendedRoute: '/session',
+    );
+    final reviewItems = _reportBuilder.buildReviewItems(
+      feedback: feedback,
+      promptId: prompt.id,
+    );
+
+    return SpeakingAssessmentResult(
+      attempt: SpeakingAttemptRecord(
+        promptId: prompt.id,
+        activityKind: prompt.kind,
+        accentPreference: accentPreference,
+        transcriptSource: 'azure_pa',
+        audioDurationMs: learnerRecording?.duration.inMilliseconds,
+        source: SpeechAttemptSource.cloud,
+        feedback: feedback,
+        createdAt: feedback.generatedAt,
+      ),
+      report: report,
+      reviewItems: reviewItems,
+    );
+  }
+
+  Future<AzurePronunciationAssessment?> _assessWithAzure({
+    required RecordingUploadPayload? payload,
+    required String referenceText,
+    required String accentPreference,
+  }) async {
+    if (payload == null ||
+        !_azureClient.isConfigured ||
+        !_azureClient.supportsMimeType(payload.mimeType)) {
+      return null;
     }
 
     try {
-      final uploadPayload = learnerRecording == null
-          ? null
-          : await loadRecordingUploadPayload(learnerRecording.path);
-
-      final response = await client.functions.invoke(
-        'submit-speaking-attempt',
-        body: {
-          'promptId': prompt.id,
-          'activityKind': _activityKindKey(prompt.kind),
-          'accentPreference': accentPreference,
-          'referenceText': prompt.referenceText,
-          'focusWords': prompt.focusWords,
-          'transcriptHint': localResult.transcript,
-          'audioBase64': uploadPayload == null
-              ? null
-              : base64Encode(uploadPayload.bytes),
-          'audioMimeType': uploadPayload?.mimeType,
-          'audioFilename': uploadPayload?.filename,
-          'audioDurationMs': learnerRecording?.duration.inMilliseconds,
-        },
+      return await _azureClient.assess(
+        audioBytes: payload.bytes,
+        mimeType: payload.mimeType,
+        referenceText: referenceText,
+        locale: accentPreference == 'british' ? 'en-GB' : 'en-US',
       );
-
-      return _mapFunctionResult(_asMap(response.data));
     } catch (_) {
-      return fallback;
+      return null;
     }
+  }
+
+  Future<RecordingUploadPayload?> _payloadFor(LearnerRecording? recording) async {
+    if (recording == null) {
+      return null;
+    }
+    final bytes = recording.bytes;
+    if (bytes != null && bytes.isNotEmpty) {
+      return RecordingUploadPayload(
+        bytes: bytes,
+        mimeType: recording.mimeType,
+        filename: _filenameForMime(recording.mimeType),
+      );
+    }
+    return loadRecordingUploadPayload(recording.path);
+  }
+
+  String _filenameForMime(String mimeType) {
+    final normalized = mimeType.toLowerCase();
+    if (normalized.contains('wav') || normalized.contains('pcm')) {
+      return 'attempt.wav';
+    }
+    if (normalized.contains('ogg') || normalized.contains('opus')) {
+      return 'attempt.ogg';
+    }
+    if (normalized.contains('mp4') || normalized.contains('aac')) {
+      return 'attempt.m4a';
+    }
+    return 'attempt.webm';
   }
 
   SpeakingAssessmentResult buildLocalFallback({
@@ -84,7 +190,7 @@ class V2SpeechAssessmentService {
     );
     final report = _reportBuilder.build(
       feedback: feedback,
-      recommendedRoute: '/speaking',
+      recommendedRoute: '/session',
     );
     final reviewItems = _reportBuilder.buildReviewItems(
       feedback: feedback,

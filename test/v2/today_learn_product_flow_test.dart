@@ -46,6 +46,10 @@ void main() {
             builder: (context, state) => const Scaffold(body: Text('speaking')),
           ),
           GoRoute(
+            path: '/session',
+            builder: (context, state) => const Scaffold(body: Text('session')),
+          ),
+          GoRoute(
             path: '/onboarding',
             builder: (context, state) =>
                 const Scaffold(body: Text('onboarding')),
@@ -63,6 +67,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      expect(find.text('今日学习循环'), findsWidgets);
       expect(find.text('继续主线课程'), findsOneWidget);
       expect(find.text(nextLesson.title), findsOneWidget);
       expect(
@@ -70,12 +75,11 @@ void main() {
         findsOneWidget,
       );
 
-      final primaryCta = find.byKey(const ValueKey('today-primary-cta'));
-      await tester.ensureVisible(primaryCta);
-      await tester.tap(primaryCta);
+      final sessionCta = find.byKey(const ValueKey('today-session-cta'));
+      await tester.ensureVisible(sessionCta);
+      await tester.tap(sessionCta);
       await tester.pumpAndSettle();
-
-      expect(find.text('lesson:${nextLesson.id}'), findsOneWidget);
+      expect(find.text('session'), findsOneWidget);
     });
 
     testWidgets(

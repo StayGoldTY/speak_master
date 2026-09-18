@@ -14,11 +14,13 @@ class OnboardingScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final setup = ref.watch(v2LearnerSetupProvider);
     final notifier = ref.read(v2LearnerSetupProvider.notifier);
+    final compact = MediaQuery.sizeOf(context).width < 760;
 
     return Scaffold(
+      backgroundColor: AppColors.bgLight,
       body: V2PageScaffold(
         title: '先完成你的学习设置',
-        subtitle: '告诉我们你的目标、当前水平和每日可投入时间，系统会据此生成中文引导更强、发音训练更聚焦的学习计划。',
+        subtitle: '目标、水平和每日时长会决定循环里先出现哪些词、句型和开口。词汇、语法和发音走同一条提取循环，而不是三个互不相干的功能。',
         actions: [
           TextButton(
             onPressed: () => context.push('/auth?from=%2Fprofile'),
@@ -36,28 +38,17 @@ class OnboardingScreen extends ConsumerWidget {
               spacing: 12,
               runSpacing: 12,
               children: LearningGoal.values.map((goal) {
-                return ChoiceChip(
-                  label: SizedBox(
-                    width: 220,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(goal.title),
-                        const SizedBox(height: 4),
-                        Text(
-                          goal.subtitle,
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                  selected: setup.goal == goal,
-                  onSelected: (_) => notifier.setGoal(goal),
+                final selected = setup.goal == goal;
+                return _SetupCard(
+                  width: compact ? double.infinity : 280,
+                  selected: selected,
+                  title: goal.title,
+                  subtitle: goal.subtitle,
+                  onTap: () => notifier.setGoal(goal),
                 );
               }).toList(),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: compact ? 36 : 56),
             const V2SectionTitle(
               title: '当前大致水平',
               subtitle: '这会影响前期中文说明的密度、课程难度和练习节奏。',
@@ -66,42 +57,37 @@ class OnboardingScreen extends ConsumerWidget {
               spacing: 12,
               runSpacing: 12,
               children: PlacementLevel.values.map((level) {
-                return ChoiceChip(
-                  label: SizedBox(
-                    width: 220,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(level.title),
-                        const SizedBox(height: 4),
-                        Text(
-                          level.subtitle,
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                  selected: setup.placementLevel == level,
-                  onSelected: (_) => notifier.setPlacementLevel(level),
+                final selected = setup.placementLevel == level;
+                return _SetupCard(
+                  width: compact ? double.infinity : 280,
+                  selected: selected,
+                  title: level.title,
+                  subtitle: level.subtitle,
+                  onTap: () => notifier.setPlacementLevel(level),
                 );
               }).toList(),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: compact ? 36 : 56),
             V2InfoCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
                     '每天准备学多久',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.4,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     '${setup.dailyMinutes} 分钟 / 天',
                     style: const TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 48,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -1.4,
+                      height: 1.05,
                     ),
                   ),
                   Slider(
@@ -114,19 +100,19 @@ class OnboardingScreen extends ConsumerWidget {
                         notifier.setDailyMinutes(value.round()),
                   ),
                   const Text(
-                    '首期计划会保持足够聚焦：1 节主线课 + 1 次补弱训练 + 1 次口语迁移，既能稳步推进，也不容易中断。',
+                    '首期每天会走同一条循环：先提取到期复习，再学一点点新内容，词汇、语法和开口交错进行。成功提取会排到明天，让睡眠帮忙巩固。',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 17,
                       color: AppColors.textSecondary,
-                      height: 1.6,
+                      height: 1.47,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
             SizedBox(
-              width: double.infinity,
+              width: compact ? double.infinity : 280,
               child: ElevatedButton(
                 onPressed: () async {
                   await notifier.completeOnboarding();
@@ -134,10 +120,69 @@ class OnboardingScreen extends ConsumerWidget {
                     context.go('/today');
                   }
                 },
-                child: const Text('生成我的今日计划'),
+                child: const Text('开始我的学习循环'),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SetupCard extends StatelessWidget {
+  final double width;
+  final bool selected;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _SetupCard({
+    required this.width,
+    required this.selected,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      child: Material(
+        color: selected ? AppColors.ink : Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(22),
+          child: Padding(
+            padding: const EdgeInsets.all(22),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.3,
+                    color: selected ? Colors.white : AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 15,
+                    height: 1.45,
+                    color: selected
+                        ? Colors.white.withValues(alpha: 0.72)
+                        : AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

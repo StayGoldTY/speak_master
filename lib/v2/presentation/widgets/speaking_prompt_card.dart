@@ -7,7 +7,9 @@ import '../../../providers/progress_provider.dart';
 import '../../../screens/tutorial/widgets/pronunciation_coach_panel.dart';
 import '../../../services/pronunciation_check_engine.dart';
 import '../../application/providers/v2_providers.dart';
+import '../../application/services/learning_loop_bridge.dart';
 import '../../application/services/pronunciation_drill_route_builder.dart';
+import '../../application/services/srs_scheduler.dart';
 import '../../domain/models/course_models.dart';
 import '../../domain/models/speech_models.dart';
 import 'v2_page_scaffold.dart';
@@ -16,12 +18,14 @@ class SpeakingPromptCard extends ConsumerStatefulWidget {
   final SpeakingPrompt prompt;
   final Color accentColor;
   final bool highlighted;
+  final bool compact;
 
   const SpeakingPromptCard({
     super.key,
     required this.prompt,
     required this.accentColor,
     this.highlighted = false,
+    this.compact = false,
   });
 
   @override
@@ -35,6 +39,8 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
   final List<SpeakingAttemptRecord> _sessionAttempts = [];
   bool _isSubmitting = false;
   String? _submissionStatus;
+  String? _nextReviewLabel;
+  String? _scheduledStamp;
 
   @override
   Widget build(BuildContext context) {
@@ -61,14 +67,16 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
       key: widget.highlighted
           ? ValueKey('speaking-prompt-focused-${widget.prompt.id}')
           : ValueKey('speaking-prompt-${widget.prompt.id}'),
-      padding: widget.highlighted ? const EdgeInsets.all(2) : EdgeInsets.zero,
       decoration: widget.highlighted
           ? BoxDecoration(
               borderRadius: BorderRadius.circular(30),
-              border: Border.all(
-                color: widget.accentColor.withValues(alpha: 0.6),
-                width: 2,
-              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.ink.withValues(alpha: 0.18),
+                  blurRadius: 28,
+                  offset: const Offset(0, 12),
+                ),
+              ],
             )
           : null,
       child: V2InfoCard(
@@ -76,7 +84,7 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (widget.highlighted) ...[
-              V2Pill(label: '当前推荐从这里开始', color: widget.accentColor),
+              const V2Pill(label: '当前推荐从这里开始', color: AppColors.ink),
               const SizedBox(height: 12),
             ],
             Wrap(
@@ -101,15 +109,19 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
             const SizedBox(height: 14),
             Text(
               widget.prompt.title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.4,
+              ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Text(
               widget.prompt.scenario,
               style: const TextStyle(
-                fontSize: 14,
+                fontSize: 17,
                 color: AppColors.textSecondary,
-                height: 1.6,
+                height: 1.47,
               ),
             ),
             if (widget.prompt.checklist.isNotEmpty) ...[
@@ -141,21 +153,22 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
               ),
             ],
             const SizedBox(height: 14),
-            _PronunciationRouteSection(
-              promptId: widget.prompt.id,
-              stages: drillRoute,
-              accentColor: widget.accentColor,
-              selectedText: activeReferenceText,
-              onSelectItem: _selectRouteMaterial,
-            ),
-            if (_activeMaterial != null) ...[
+            if (!widget.compact)
+              _PronunciationRouteSection(
+                promptId: widget.prompt.id,
+                stages: drillRoute,
+                accentColor: widget.accentColor,
+                selectedText: activeReferenceText,
+                onSelectItem: _selectRouteMaterial,
+              ),
+            if (!widget.compact && _activeMaterial != null) ...[
               const SizedBox(height: 10),
               V2Pill(
                 label: '已切到：${_activeMaterial!.text}',
                 color: widget.accentColor,
               ),
             ],
-            if (widget.prompt.warmupWords.isNotEmpty) ...[
+            if (!widget.compact && widget.prompt.warmupWords.isNotEmpty) ...[
               const SizedBox(height: 14),
               _DrillSection(
                 title: '先拆开练',
@@ -164,7 +177,7 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
                 compactChips: true,
               ),
             ],
-            if (widget.prompt.phraseDrills.isNotEmpty) ...[
+            if (!widget.compact && widget.prompt.phraseDrills.isNotEmpty) ...[
               const SizedBox(height: 14),
               _DrillSection(
                 title: '短语连读',
@@ -172,24 +185,27 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
                 accentColor: AppColors.secondary,
               ),
             ],
-            if (widget.prompt.sentenceVariations.isNotEmpty ||
-                widget.prompt.rhythmCue.trim().isNotEmpty ||
-                widget.prompt.extensionPrompt.trim().isNotEmpty) ...[
+            if (!widget.compact &&
+                (widget.prompt.sentenceVariations.isNotEmpty ||
+                    widget.prompt.rhythmCue.trim().isNotEmpty ||
+                    widget.prompt.extensionPrompt.trim().isNotEmpty)) ...[
               const SizedBox(height: 14),
               _VariationSection(
                 prompt: widget.prompt,
                 accentColor: widget.accentColor,
               ),
             ],
-            const SizedBox(height: 14),
-            const Text(
-              '如果你想走云端转写和结构化测评，先录下自己的声音再开始检查。云端暂时不可用时，系统会自动回退到本地识别反馈，并明确告诉你当前反馈类型。',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-                height: 1.55,
+            if (!widget.compact) ...[
+              const SizedBox(height: 14),
+              const Text(
+                '开口评测会同时录音。配置了 Azure Speech 后给出词/音素声学评分；否则只做识别词级对齐，并标明这不是声学分。',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                  height: 1.55,
+                ),
               ),
-            ),
+            ],
             PronunciationCoachPanel(
               key: ValueKey(
                 'speaking-coach-${widget.prompt.id}-$activeReferenceText',
@@ -209,7 +225,7 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
               const LinearProgressIndicator(minHeight: 4),
               const SizedBox(height: 8),
               const Text(
-                '正在上传本次口语尝试，并生成结构化反馈...',
+                '正在用录音做发音评测...',
                 style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
               ),
             ],
@@ -230,6 +246,13 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
                 feedback: _latestFeedback!,
                 historyCount: history.length,
               ),
+              if (_nextReviewLabel != null) ...[
+                const SizedBox(height: 12),
+                V2Pill(
+                  label: '下次复习：$_nextReviewLabel',
+                  color: AppColors.secondary,
+                ),
+              ],
             ],
             if (_latestReport != null) ...[
               const SizedBox(height: 16),
@@ -298,8 +321,9 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
       _latestFeedback = feedback;
       _latestReport = ref
           .read(v2LocalAssessmentReportBuilderProvider)
-          .build(feedback: feedback, recommendedRoute: '/speaking');
+          .build(feedback: feedback, recommendedRoute: '/session');
     });
+    _scheduleFromFeedback(feedback);
   }
 
   Future<void> _handleAttemptReady(
@@ -310,7 +334,7 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
 
     setState(() {
       _isSubmitting = true;
-      _submissionStatus = '正在准备云端语音测评...';
+      _submissionStatus = '正在准备发音评测...';
     });
 
     final assessment = await ref
@@ -331,9 +355,9 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
       _latestFeedback = assessment.attempt.feedback;
       _latestReport = assessment.report;
       _sessionAttempts.insert(0, assessment.attempt);
-      _submissionStatus = assessment.attempt.source == SpeechAttemptSource.cloud
-          ? '云端测评已保存，本次练习的反馈和测评报告已经更新。'
-          : '云端测评暂时不可用，这一轮已保留为本地回退反馈。';
+      _submissionStatus = assessment.attempt.feedback.isAcoustic
+          ? '已完成 Azure 声学评测：词和音素分数来自真实发音模型。'
+          : '当前没有可用的 Azure 声学评测，这一轮只保留识别词级对齐，不是发音分数。';
     });
 
     await ref
@@ -356,6 +380,37 @@ class _SpeakingPromptCardState extends ConsumerState<SpeakingPromptCard> {
               )
               .toList(),
         );
+    await _scheduleFromFeedback(assessment.attempt.feedback);
+  }
+
+  Future<void> _scheduleFromFeedback(SpeechFeedback feedback) async {
+    final stamp =
+        '${widget.prompt.id}:${feedback.recognizedText}:${feedback.coverageScore.toStringAsFixed(2)}';
+    if (_scheduledStamp == stamp) {
+      return;
+    }
+    _scheduledStamp = stamp;
+
+    final memories = const LearningLoopBridge().fromSpeakingFeedback(
+      existing: ref.read(progressProvider).srsMemories,
+      promptId: widget.prompt.id,
+      feedback: feedback,
+    );
+    if (memories.isNotEmpty) {
+      await ref.read(progressProvider.notifier).upsertSrsMemories(memories);
+    }
+
+    final speakingMemory = memories.isEmpty
+        ? null
+        : memories.reduce((a, b) => a.dueAt.isAfter(b.dueAt) ? a : b);
+    if (speakingMemory != null && mounted) {
+      setState(() {
+        _nextReviewLabel = const SrsScheduler().formatDue(
+          speakingMemory.dueAt,
+          DateTime.now(),
+        );
+      });
+    }
   }
 
   List<SpeakingAttemptRecord> _mergeHistory(
@@ -405,8 +460,9 @@ class _PronunciationRouteSection extends StatelessWidget {
             Text(
               '五步发音路线',
               style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.2,
                 color: accentColor,
               ),
             ),
@@ -455,9 +511,8 @@ class _PronunciationRouteStageChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: accentColor.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: accentColor.withValues(alpha: 0.12)),
+          color: AppColors.surfaceMuted,
+          borderRadius: BorderRadius.circular(18),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -473,7 +528,7 @@ class _PronunciationRouteStageChip extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 13,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                       color: accentColor,
                     ),
                   ),
@@ -503,7 +558,6 @@ class _PronunciationRouteStageChip extends StatelessWidget {
                     ),
                     label: entry.$2,
                     selected: entry.$2 == selectedText,
-                    accentColor: accentColor,
                     onTap: () => onSelectItem(stage, entry.$2),
                   ),
               ],
@@ -535,14 +589,12 @@ class _ActivePronunciationMaterial {
 class _RouteItemButton extends StatelessWidget {
   final String label;
   final bool selected;
-  final Color accentColor;
   final VoidCallback onTap;
 
   const _RouteItemButton({
     super.key,
     required this.label,
     required this.selected,
-    required this.accentColor,
     required this.onTap,
   });
 
@@ -557,9 +609,8 @@ class _RouteItemButton extends StatelessWidget {
           constraints: const BoxConstraints(maxWidth: 150),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
           decoration: BoxDecoration(
-            color: selected ? accentColor : accentColor.withValues(alpha: 0.08),
+            color: selected ? AppColors.ink : AppColors.fillTertiary,
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: accentColor.withValues(alpha: 0.14)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -569,7 +620,7 @@ class _RouteItemButton extends StatelessWidget {
                     ? Icons.check_circle_rounded
                     : Icons.play_arrow_rounded,
                 size: 16,
-                color: selected ? Colors.white : accentColor,
+                color: selected ? Colors.white : AppColors.ink,
               ),
               const SizedBox(width: 4),
               Flexible(
@@ -579,8 +630,8 @@ class _RouteItemButton extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: selected ? Colors.white : accentColor,
+                    fontWeight: FontWeight.w600,
+                    color: selected ? Colors.white : AppColors.ink,
                   ),
                 ),
               ),
@@ -611,9 +662,8 @@ class _DrillSection extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: accentColor.withValues(alpha: 0.06),
+        color: AppColors.surfaceMuted,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: accentColor.withValues(alpha: 0.12)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -621,8 +671,9 @@ class _DrillSection extends StatelessWidget {
           Text(
             title,
             style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.2,
               color: accentColor,
             ),
           ),
@@ -675,9 +726,8 @@ class _VariationSection extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surfaceMuted,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.grey.shade200),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -685,8 +735,9 @@ class _VariationSection extends StatelessWidget {
           Text(
             '自然变体开口',
             style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.2,
               color: accentColor,
             ),
           ),
@@ -757,13 +808,16 @@ class _SpeechFeedbackSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final intelligibilityPercent = (feedback.coverageScore * 100).round();
+    final isAcoustic = feedback.isAcoustic;
+    final scoreLabel = isAcoustic
+        ? 'Azure ${feedback.overallAcousticScore?.round() ?? 0}'
+        : '识别对齐 ${(feedback.coverageScore * 100).round()}%';
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.06),
+        color: AppColors.surfaceMuted,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
@@ -775,12 +829,12 @@ class _SpeechFeedbackSummary extends StatelessWidget {
                 child: Text(
                   '本次学习反馈',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
               V2Pill(
-                label: '识别线索 $intelligibilityPercent%',
+                label: scoreLabel,
                 color: AppColors.primary,
               ),
             ],
@@ -796,6 +850,12 @@ class _SpeechFeedbackSummary extends StatelessWidget {
             runSpacing: 8,
             children: [
               V2Pill(
+                label: feedback.assessmentKind.label,
+                color: isAcoustic
+                    ? AppColors.secondary
+                    : AppColors.textSecondary,
+              ),
+              V2Pill(
                 label: feedback.fluencyBand.label,
                 color: AppColors.successGreen,
               ),
@@ -803,14 +863,62 @@ class _SpeechFeedbackSummary extends StatelessWidget {
                 label: feedback.paceBand.label,
                 color: AppColors.accentOrange,
               ),
-              V2Pill(
-                label: feedback.fallbackUsed ? '本地回退' : '云端测评',
-                color: feedback.fallbackUsed
-                    ? AppColors.textSecondary
-                    : AppColors.secondary,
-              ),
+              if (isAcoustic && feedback.accuracyScore != null)
+                V2Pill(
+                  label: '准确 ${feedback.accuracyScore!.round()}',
+                  color: AppColors.primary,
+                ),
+              if (isAcoustic && feedback.completenessScore != null)
+                V2Pill(
+                  label: '完整 ${feedback.completenessScore!.round()}',
+                  color: AppColors.primary,
+                ),
             ],
           ),
+          if (feedback.wordResults.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: feedback.wordResults.take(12).map((item) {
+                final color = switch (item.errorType) {
+                  PronunciationWordError.none => AppColors.successGreen,
+                  PronunciationWordError.mispronunciation =>
+                    AppColors.accentOrange,
+                  PronunciationWordError.omission => AppColors.errorRed,
+                  PronunciationWordError.insertion => AppColors.textSecondary,
+                };
+                final score = item.accuracyScore == null
+                    ? item.word
+                    : '${item.word} ${item.accuracyScore!.round()}';
+                return V2Pill(label: score, color: color);
+              }).toList(),
+            ),
+          ],
+          if (feedback.phonemeIssues.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Text(
+              '音素提示',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            ...feedback.phonemeIssues.take(4).map((item) {
+              final score = item.accuracyScore == null
+                  ? ''
+                  : '（${item.accuracyScore!.round()}）';
+              final spoken = item.spoken == null ? '' : ' → ${item.spoken}';
+              final hint = item.coachingHint == null
+                  ? ''
+                  : ' ${item.coachingHint}';
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text(
+                  '• /${item.expected}/$spoken$score$hint',
+                  style: const TextStyle(fontSize: 13, height: 1.5),
+                ),
+              );
+            }),
+          ],
           if (feedback.weakWords.isNotEmpty) ...[
             const SizedBox(height: 12),
             Text(
@@ -880,9 +988,8 @@ class _AssessmentReportSummary extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surfaceMuted,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade200),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -893,7 +1000,7 @@ class _AssessmentReportSummary extends StatelessWidget {
                 child: Text(
                   '测评报告',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
@@ -966,7 +1073,7 @@ class _AttemptHistorySummary extends StatelessWidget {
             '最近记录',
             style: Theme.of(
               context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 12),
           ...attempts.map(
@@ -984,8 +1091,9 @@ class _AttemptHistorySummary extends StatelessWidget {
                     ),
                   ),
                   V2Pill(
-                    label:
-                        '识别线索 ${(attempt.feedback.coverageScore * 100).round()}%',
+                    label: attempt.feedback.isAcoustic
+                        ? 'Azure ${attempt.feedback.overallAcousticScore?.round() ?? 0}'
+                        : '对齐 ${(attempt.feedback.coverageScore * 100).round()}%',
                     color: AppColors.primary,
                   ),
                   const SizedBox(width: 8),

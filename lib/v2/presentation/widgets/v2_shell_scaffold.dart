@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -41,63 +43,59 @@ class V2ShellScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.bgLight,
       extendBody: true,
       body: child,
       bottomNavigationBar: SafeArea(
         top: false,
-        minimum: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+        minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
         child: Align(
           alignment: Alignment.bottomCenter,
           heightFactor: 1,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 760),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.92),
-                borderRadius: BorderRadius.circular(28),
-                border: Border.all(
-                  color: AppColors.glassBorder.withValues(alpha: 0.7),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.12),
-                    blurRadius: 32,
-                    offset: const Offset(0, 16),
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(28),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.78),
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.7)),
+                    boxShadow: AppColors.softShadow,
                   ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(28),
-                child: NavigationBar(
-                  selectedIndex: _selectedIndex(context),
-                  onDestinationSelected: (index) => _goTo(context, index),
-                  destinations: const [
-                    NavigationDestination(
-                      icon: Icon(Icons.today_outlined),
-                      selectedIcon: Icon(Icons.today),
-                      label: '今日',
-                    ),
-                    NavigationDestination(
-                      icon: Icon(Icons.school_outlined),
-                      selectedIcon: Icon(Icons.school),
-                      label: '课程',
-                    ),
-                    NavigationDestination(
-                      icon: Icon(Icons.multitrack_audio_outlined),
-                      selectedIcon: Icon(Icons.multitrack_audio),
-                      label: '口语',
-                    ),
-                    NavigationDestination(
-                      icon: Icon(Icons.auto_graph_outlined),
-                      selectedIcon: Icon(Icons.auto_graph),
-                      label: '进度',
-                    ),
-                    NavigationDestination(
-                      icon: Icon(Icons.person_outline),
-                      selectedIcon: Icon(Icons.person),
-                      label: '我的',
-                    ),
-                  ],
+                  child: NavigationBar(
+                    selectedIndex: _selectedIndex(context),
+                    onDestinationSelected: (index) => _goTo(context, index),
+                    destinations: const [
+                      NavigationDestination(
+                        icon: Icon(Icons.wb_sunny_outlined),
+                        selectedIcon: Icon(Icons.wb_sunny_rounded),
+                        label: '今日',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.menu_book_outlined),
+                        selectedIcon: Icon(Icons.menu_book_rounded),
+                        label: '课程',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.mic_none_rounded),
+                        selectedIcon: Icon(Icons.mic_rounded),
+                        label: '口语',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.insights_outlined),
+                        selectedIcon: Icon(Icons.insights_rounded),
+                        label: '进度',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.person_outline_rounded),
+                        selectedIcon: Icon(Icons.person_rounded),
+                        label: '我的',
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

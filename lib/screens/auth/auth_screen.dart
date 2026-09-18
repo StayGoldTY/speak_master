@@ -90,8 +90,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     });
 
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppColors.gradientCanvas),
+      backgroundColor: AppColors.bgLight,
+      body: ColoredBox(
+        color: AppColors.bgLight,
         child: SafeArea(
           child: Align(
             alignment: Alignment.topCenter,
@@ -170,30 +171,35 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         Container(
           width: 76,
           height: 76,
-          decoration: BoxDecoration(
-            gradient: AppColors.gradientPrimary,
-            borderRadius: BorderRadius.circular(22),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.18),
-                blurRadius: 22,
-                offset: const Offset(0, 14),
-              ),
-            ],
+          decoration: const BoxDecoration(
+            color: AppColors.ink,
+            shape: BoxShape.circle,
           ),
           child: const Icon(
-            Icons.record_voice_over_rounded,
+            Icons.graphic_eq_rounded,
             color: Colors.white,
-            size: 40,
+            size: 34,
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 20),
         const Text(
-          '声临其境 Speak Master',
+          '声临其境',
           style: TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.w800,
+            fontSize: 34,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.9,
             color: AppColors.textPrimary,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Speak Master',
+          style: TextStyle(
+            fontSize: 15,
+            letterSpacing: 1.4,
+            color: AppColors.textHint,
+            fontWeight: FontWeight.w600,
           ),
           textAlign: TextAlign.center,
         ),
@@ -443,16 +449,17 @@ class _InfoCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surfaceMuted,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: AppColors.glassBorder.withValues(alpha: 0.72),
-        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+            style: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.2,
+            ),
           ),
           const SizedBox(height: 8),
           Text(

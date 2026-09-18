@@ -11,6 +11,7 @@ import '../../../providers/service_providers.dart';
 import '../../../services/pronunciation_audio_assets.dart';
 import '../../../services/pronunciation_check_engine.dart';
 import '../../../services/pronunciation_practice_service.dart';
+import '../../../services/word_alignment.dart';
 import '../../../widgets/record_button.dart';
 
 enum PronunciationCoachMode { audioReference, guidedRepeat, readAloud }
@@ -70,6 +71,8 @@ class _PronunciationCoachPanelState
   bool _isRecordingLearnerVoice = false;
   bool _isPlayingLearnerRecording = false;
   bool _didFinalizeCurrentSession = false;
+  bool _captureStartedByCheck = false;
+  bool _isFinalizingAssessment = false;
   PronunciationVoiceGender _voiceGender = PronunciationVoiceGender.neutral;
 
   Duration _recordingElapsed = Duration.zero;
@@ -123,7 +126,7 @@ class _PronunciationCoachPanelState
     if (widget.description != null && widget.description!.trim().isNotEmpty) {
       return widget.description!.trim();
     }
-    return '这里会先播放系统标准发音，再提供真实录音、回放对照和浏览器识别检查。';
+    return '这里会先播放系统标准发音。开口检查会同时录音：有 Azure 密钥时做词/音素声学评分，否则只做识别词级对齐，不会假装打分。';
   }
 
   String get _recordingElapsedLabel {
@@ -296,7 +299,7 @@ class _PronunciationCoachPanelState
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.bgLight,
+              color: AppColors.surfaceMuted,
               borderRadius: BorderRadius.circular(18),
             ),
             child: SelectionArea(
@@ -304,9 +307,11 @@ class _PronunciationCoachPanelState
                 _referenceText,
                 key: ValueKey('speech-reference-$_panelId'),
                 style: const TextStyle(
-                  fontSize: 14,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.6,
                   color: AppColors.textPrimary,
-                  height: 1.65,
+                  height: 1.25,
                 ),
               ),
             ),
@@ -373,20 +378,20 @@ class _PronunciationCoachPanelState
           child: Column(
             children: [
               RecordButton(
-                isRecording: _isListening,
-                onTap: hasReferenceText && !_isRecordingLearnerVoice
+                isRecording: _isListening || _isRecordingLearnerVoice,
+                onTap: hasReferenceText
                     ? _toggleRecognition
                     : () {},
               ),
               const SizedBox(height: 12),
               Text(
-                _isListening
-                    ? '识别中，读完整句后再点一次停止。'
+                _isListening || (_isRecordingLearnerVoice && _captureStartedByCheck)
+                    ? '正在录音并识别，读完整句后再点一次停止。'
                     : _isRecordingLearnerVoice
-                    ? '请先结束你的录音，再开始自动识别检查。'
+                    ? '你正在单独录音。也可以点麦克风，停止后会用这段录音做评测。'
                     : hasReferenceText
-                    ? '点击开始跟读识别，自动检查会告诉你哪些词还没有稳定读出来。'
-                    : '补充参考文本后即可开始跟读识别。',
+                    ? '点击开始开口评测：会同时录音。有 Azure 时给出声学词/音素分，否则只给识别对齐。'
+                    : '补充参考文本后即可开始开口评测。',
                 style: const TextStyle(
                   fontSize: 13,
                   color: AppColors.textSecondary,
@@ -454,7 +459,7 @@ class _PronunciationCoachPanelState
           textColor: AppColors.textSecondary,
           icon: Icons.shield_moon_outlined,
           text:
-              '这里使用内置参考音频或系统 TTS 做真实播放，并提供真实录音和回放；自动检查仍基于浏览器语音识别，只负责提供“是否被听懂”的线索，不是声学发音评分。',
+              '参考音来自内置音频或系统 TTS。开口检查会尽量录成 16 kHz WAV 以便 Azure 声学评测；没有 Azure 密钥时，只展示识别词级对齐和中文母语者常见口型提示，不会生成假的音素分数。',
         ),
       ],
     );
@@ -697,11 +702,8 @@ class _PronunciationCoachPanelState
     if (_referenceText.isEmpty) {
       return;
     }
-    if (_isRecordingLearnerVoice) {
-      return;
-    }
 
-    if (_isListening) {
+    if (_isListening || (_isRecordingLearnerVoice && _captureStartedByCheck)) {
       await _finalizeRecognitionAfterManualStop();
       return;
     }
@@ -720,8 +722,30 @@ class _PronunciationCoachPanelState
       _transcript = '';
       _checkResult = null;
       _errorMessage = null;
-      _statusMessage = '正在启动语音识别，请直接跟读。';
+      _statusMessage = '正在启动开口评测：先录音，同时尝试识别。';
     });
+
+    var recordingStarted = _isRecordingLearnerVoice;
+    if (!recordingStarted) {
+      try {
+        recordingStarted = await _practiceService.startLearnerRecording();
+      } catch (_) {
+        recordingStarted = false;
+      }
+      if (recordingStarted) {
+        _captureStartedByCheck = true;
+        _recordingElapsed = Duration.zero;
+        _recordingTimer?.cancel();
+        _recordingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+          if (!mounted) {
+            return;
+          }
+          setState(() {
+            _recordingElapsed += const Duration(seconds: 1);
+          });
+        });
+      }
+    }
 
     final started = await _practiceService.startListening(
       accentPreference: _accentPreference,
@@ -736,19 +760,43 @@ class _PronunciationCoachPanelState
 
     setState(() {
       _isListening = started;
-      if (!started && _errorMessage == null) {
-        _errorMessage = '当前浏览器没有成功启动语音识别。';
+      _isRecordingLearnerVoice = recordingStarted || _isRecordingLearnerVoice;
+      if (!started && !recordingStarted && _errorMessage == null) {
+        _errorMessage = '当前浏览器没有成功启动麦克风评测。';
         _statusMessage = null;
+      } else if (!started && recordingStarted) {
+        _statusMessage = '识别不可用，这一轮会先保存录音；有 Azure 时仍可做声学评分。';
       }
     });
   }
 
   Future<void> _finalizeRecognitionAfterManualStop() async {
-    final transcript = await _practiceService.stopListening();
-    _finalizeRecognitionSession(
-      transcriptOverride: transcript,
-      statusMessage: transcript.isEmpty ? '已停止识别，但没有抓到有效英文。' : '识别已停止，已生成自动检查。',
-    );
+    if (_didFinalizeCurrentSession || _isFinalizingAssessment) {
+      return;
+    }
+    _isFinalizingAssessment = true;
+    try {
+      final transcript = await _practiceService.stopListening();
+      LearnerRecording? captured = _learnerRecording;
+      if (_captureStartedByCheck) {
+        _recordingTimer?.cancel();
+        captured = await _practiceService.stopLearnerRecording(
+          duration: _recordingElapsed,
+        );
+        _captureStartedByCheck = false;
+      }
+      _finalizeRecognitionSession(
+        transcriptOverride: transcript,
+        recordingOverride: captured,
+        statusMessage: transcript.isEmpty
+            ? (captured == null
+                  ? '已停止，但没有抓到有效英文，也没有保存到录音。'
+                  : '识别没抓到英文，已保留录音，有 Azure 时仍可评分。')
+            : '评测已停止，已生成自动检查。',
+      );
+    } finally {
+      _isFinalizingAssessment = false;
+    }
   }
 
   void _handleRecognitionResult(SpeechRecognitionResult result) {
@@ -761,16 +809,21 @@ class _PronunciationCoachPanelState
     });
 
     if (result.finalResult) {
-      _finalizeRecognitionSession(
-        statusMessage: _transcript.isEmpty
-            ? '识别结束，但还没有拿到有效英文。'
-            : '识别结束，已生成自动检查。',
-      );
+      unawaited(_finalizeRecognitionAfterManualStop());
     }
   }
 
   void _handleRecognitionError(String message) {
     if (!mounted) {
+      return;
+    }
+
+    if (_captureStartedByCheck || _learnerRecording != null) {
+      setState(() {
+        _errorMessage = _friendlyRecognitionError(message);
+        _statusMessage = '浏览器识别失败，但仍会用录音做评测（有 Azure 才是声学分）。';
+        _isListening = false;
+      });
       return;
     }
 
@@ -789,16 +842,13 @@ class _PronunciationCoachPanelState
 
     final normalized = status.toLowerCase();
     if (normalized.contains('notlistening') || normalized.contains('done')) {
-      _finalizeRecognitionSession(
-        statusMessage: _transcript.isEmpty
-            ? '识别结束，但还没有拿到有效英文。'
-            : '识别结束，已生成自动检查。',
-      );
+      unawaited(_finalizeRecognitionAfterManualStop());
     }
   }
 
   void _finalizeRecognitionSession({
     String? transcriptOverride,
+    LearnerRecording? recordingOverride,
     String? statusMessage,
   }) {
     if (_didFinalizeCurrentSession) {
@@ -809,6 +859,7 @@ class _PronunciationCoachPanelState
     final resolvedTranscript = transcriptOverride?.trim().isNotEmpty == true
         ? transcriptOverride!.trim()
         : _transcript.trim();
+    final resolvedRecording = recordingOverride ?? _learnerRecording;
     final result = PronunciationCheckEngine.analyze(
       step: widget.step,
       referenceText: widget.step == null ? _referenceText : null,
@@ -824,12 +875,18 @@ class _PronunciationCoachPanelState
       _transcript = resolvedTranscript;
       _checkResult = result;
       _isListening = false;
+      _isRecordingLearnerVoice = false;
+      if (resolvedRecording != null) {
+        _learnerRecording = resolvedRecording;
+      }
       _statusMessage = statusMessage;
     });
 
-    if (result.hasTranscript) {
-      widget.onCheckCompleted?.call(result);
-      unawaited(widget.onAttemptReady?.call(result, _learnerRecording));
+    if (result.hasTranscript || resolvedRecording != null) {
+      if (result.hasTranscript) {
+        widget.onCheckCompleted?.call(result);
+      }
+      unawaited(widget.onAttemptReady?.call(result, resolvedRecording));
     }
   }
 
@@ -879,10 +936,11 @@ class _SectionHeader extends StatelessWidget {
         const SizedBox(width: 8),
         Text(
           title,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w800,
-            color: color,
+          style: const TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.2,
+            color: AppColors.ink,
           ),
         ),
       ],
@@ -963,7 +1021,11 @@ class _LearnerRecordingCard extends StatelessWidget {
         children: [
           const Text(
             '我的跟读录音',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.2,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -1036,10 +1098,11 @@ class _AutomaticCheckCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  '可理解度线索（识别辅助）',
+                  '词级对齐（识别辅助）',
                   style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.2,
                   ),
                 ),
               ),
@@ -1067,9 +1130,9 @@ class _AutomaticCheckCard extends StatelessWidget {
           Row(
             children: [
               const SizedBox(
-                width: 76,
+                width: 88,
                 child: Text(
-                  '识别线索',
+                  '识别对齐',
                   style: TextStyle(
                     fontSize: 13,
                     color: AppColors.textSecondary,
@@ -1098,6 +1161,39 @@ class _AutomaticCheckCard extends StatelessWidget {
               ),
             ],
           ),
+          if (result.wordAlignments.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: result.wordAlignments.map((item) {
+                final color = switch (item.status) {
+                  WordAlignStatus.match => AppColors.successGreen,
+                  WordAlignStatus.substitute => AppColors.accentOrange,
+                  WordAlignStatus.missing => AppColors.errorRed,
+                  WordAlignStatus.extra => AppColors.textSecondary,
+                };
+                return Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    item.displayLabel,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: color,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
           if (result.matchedFocusWords.isNotEmpty) ...[
             const SizedBox(height: 14),
             Text(
@@ -1160,7 +1256,7 @@ class _AutomaticCheckCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           const Text(
-            '识别线索只用来帮助你判断“是否被听懂”，不等同于声学发音评分。',
+            '词级对齐只说明识别器按顺序听到了什么，不等同于 Azure 声学发音评分。',
             style: TextStyle(
               fontSize: 12,
               color: AppColors.textSecondary,

@@ -51,8 +51,9 @@ class OpsConsoleScreen extends ConsumerWidget {
                   Text(
                     track.title,
                     style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 21,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.3,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -86,7 +87,7 @@ class OpsConsoleScreen extends ConsumerWidget {
                             Text(
                               job.title,
                               style: const TextStyle(
-                                fontWeight: FontWeight.w800,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                             const SizedBox(height: 6),
@@ -157,9 +158,10 @@ class _OpsMetric extends StatelessWidget {
             Text(
               value,
               style: TextStyle(
-                fontSize: 30,
-                fontWeight: FontWeight.w800,
-                color: color,
+              fontSize: 28,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.6,
+              color: color,
               ),
             ),
           ],

@@ -19,6 +19,8 @@ class ProfileScreenV2 extends ConsumerWidget {
     final avatarLabel = learner.displayName.trim().isEmpty
         ? '学'
         : learner.displayName.trim().substring(0, 1).toUpperCase();
+    final compact = MediaQuery.sizeOf(context).width < 760;
+    final signedIn = auth.status == AuthStatus.authenticated;
 
     return V2PageScaffold(
       title: learner.displayName,
@@ -33,126 +35,90 @@ class ProfileScreenV2 extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           V2InfoCard(
-            child: Row(
-              children: [
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    gradient: AppColors.gradientPrimary,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    avatarLabel,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
+            child: compact
+                ? Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        auth.status == AuthStatus.authenticated
-                            ? '已登录'
-                            : '游客模式',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        auth.status == AuthStatus.authenticated
-                            ? '已开启账号同步，可承接云端进度、发音记录和后续个性化服务。'
-                            : '现在也可以本地体验，之后再绑定账号继续保留学习记录。',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textSecondary,
-                          height: 1.55,
-                        ),
-                      ),
+                      _Avatar(label: avatarLabel),
+                      const SizedBox(height: 18),
+                      _AccountCopy(signedIn: signedIn),
+                      const SizedBox(height: 18),
+                      _AccountAction(signedIn: signedIn),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      _Avatar(label: avatarLabel),
+                      const SizedBox(width: 20),
+                      Expanded(child: _AccountCopy(signedIn: signedIn)),
+                      const SizedBox(width: 16),
+                      _AccountAction(signedIn: signedIn),
                     ],
                   ),
-                ),
-                const SizedBox(width: 12),
-                if (auth.status == AuthStatus.authenticated)
-                  OutlinedButton(
-                    onPressed: () => ref.read(authProvider.notifier).signOut(),
-                    child: const Text('退出登录'),
-                  )
-                else
-                  FilledButton(
-                    onPressed: () => context.push('/auth?from=%2Fprofile'),
-                    child: const Text('去登录'),
-                  ),
-              ],
-            ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: compact ? 36 : 56),
           const V2SectionTitle(
             title: '参考发音偏好',
             subtitle: '参考音频、识别配置和口语任务都会跟随你的口音偏好。',
           ),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: ['american', 'british'].map((accent) {
-              final selected = learner.accentPreference == accent;
-              final label = accent == 'british' ? '英式发音' : '美式发音';
+          Material(
+            color: Colors.transparent,
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: ['american', 'british'].map((accent) {
+                final selected = learner.accentPreference == accent;
+                final label = accent == 'british' ? '英式发音' : '美式发音';
 
-              return ChoiceChip(
-                label: Text(label),
-                selected: selected,
-                onSelected: (_) async {
-                  await ref
-                      .read(storageServiceProvider)
-                      .saveAccentPreference(accent);
-                  if (ref.read(authProvider).status ==
-                      AuthStatus.authenticated) {
+                return ChoiceChip(
+                  label: Text(label),
+                  selected: selected,
+                  onSelected: (_) async {
                     await ref
-                        .read(authProvider.notifier)
-                        .updateAccentPreference(accent);
-                  }
-                },
-              );
-            }).toList(),
+                        .read(storageServiceProvider)
+                        .saveAccentPreference(accent);
+                    if (ref.read(authProvider).status ==
+                        AuthStatus.authenticated) {
+                      await ref
+                          .read(authProvider.notifier)
+                          .updateAccentPreference(accent);
+                    }
+                  },
+                );
+              }).toList(),
+            ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: compact ? 36 : 56),
           V2InfoCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
                   '当前学习设置',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.4,
+                  ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 18),
                 Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: 24,
+                  runSpacing: 16,
                   children: [
-                    V2Pill(label: learner.goal.title, color: AppColors.primary),
-                    V2Pill(
-                      label: learner.placementLevel.title,
-                      color: AppColors.secondary,
+                    V2SpecMetric(label: '目标', value: learner.goal.title),
+                    V2SpecMetric(
+                      label: '水平',
+                      value: learner.placementLevel.title,
                     ),
-                    V2Pill(
-                      label: '${learner.dailyMinutes} 分钟/天',
-                      color: AppColors.accentOrange,
+                    V2SpecMetric(
+                      label: '每日',
+                      value: '${learner.dailyMinutes} 分钟',
                     ),
-                    V2Pill(
-                      label: learner.accentLabel,
-                      color: AppColors.textSecondary,
-                    ),
+                    V2SpecMetric(label: '口音', value: learner.accentLabel),
                   ],
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 22),
                 OutlinedButton(
                   onPressed: () => context.go('/onboarding'),
                   child: const Text('修改学习设置'),
@@ -162,6 +128,87 @@ class ProfileScreenV2 extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _Avatar extends StatelessWidget {
+  final String label;
+
+  const _Avatar({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 72,
+      height: 72,
+      decoration: const BoxDecoration(
+        color: AppColors.ink,
+        shape: BoxShape.circle,
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 28,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+class _AccountCopy extends StatelessWidget {
+  final bool signedIn;
+
+  const _AccountCopy({required this.signedIn});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          signedIn ? '已登录' : '游客模式',
+          style: const TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.4,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          signedIn
+              ? '已开启账号同步，可承接云端进度、发音记录和后续个性化服务。'
+              : '现在也可以本地体验，之后再绑定账号继续保留学习记录。',
+          style: const TextStyle(
+            fontSize: 15,
+            color: AppColors.textSecondary,
+            height: 1.5,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AccountAction extends ConsumerWidget {
+  final bool signedIn;
+
+  const _AccountAction({required this.signedIn});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (signedIn) {
+      return OutlinedButton(
+        onPressed: () => ref.read(authProvider.notifier).signOut(),
+        child: const Text('退出登录'),
+      );
+    }
+    return FilledButton(
+      onPressed: () => context.push('/auth?from=%2Fprofile'),
+      child: const Text('去登录'),
     );
   }
 }

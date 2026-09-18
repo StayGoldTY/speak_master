@@ -37,8 +37,9 @@ void main() {
 
       expect(plan.items, hasLength(3));
       expect(plan.headline, contains('Taylor'));
-      expect(plan.items.first.route, '/lesson/u1_L1');
-      expect(plan.items.first.title, isNotEmpty);
+      expect(plan.items.first.route, '/session');
+      expect(plan.items[1].route, '/lesson/u1_L1');
+      expect(plan.items.first.title, contains('今日学习循环'));
     },
   );
 }

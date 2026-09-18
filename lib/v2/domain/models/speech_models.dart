@@ -39,6 +39,110 @@ extension PaceBandX on PaceBand {
   }
 }
 
+enum PronunciationAssessmentKind { azureAcoustic, recognitionAlignment }
+
+extension PronunciationAssessmentKindX on PronunciationAssessmentKind {
+  String get key => switch (this) {
+    PronunciationAssessmentKind.azureAcoustic => 'azure_acoustic',
+    PronunciationAssessmentKind.recognitionAlignment =>
+      'recognition_alignment',
+  };
+
+  String get label => switch (this) {
+    PronunciationAssessmentKind.azureAcoustic => 'Azure 声学评分',
+    PronunciationAssessmentKind.recognitionAlignment => '识别对齐线索',
+  };
+
+  bool get isAcoustic => this == PronunciationAssessmentKind.azureAcoustic;
+
+  static PronunciationAssessmentKind fromKey(String? value) {
+    return PronunciationAssessmentKind.values.firstWhere(
+      (item) => item.key == value,
+      orElse: () => PronunciationAssessmentKind.recognitionAlignment,
+    );
+  }
+}
+
+enum PronunciationWordError { none, omission, insertion, mispronunciation }
+
+extension PronunciationWordErrorX on PronunciationWordError {
+  String get key => name;
+
+  static PronunciationWordError fromKey(String? value) {
+    final normalized = (value ?? '').toLowerCase();
+    return switch (normalized) {
+      'omission' => PronunciationWordError.omission,
+      'insertion' => PronunciationWordError.insertion,
+      'mispronunciation' => PronunciationWordError.mispronunciation,
+      _ => PronunciationWordError.none,
+    };
+  }
+}
+
+class PronunciationWordResult {
+  final String word;
+  final PronunciationWordError errorType;
+  final double? accuracyScore;
+  final String? spokenForm;
+
+  const PronunciationWordResult({
+    required this.word,
+    required this.errorType,
+    this.accuracyScore,
+    this.spokenForm,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'word': word,
+      'errorType': errorType.key,
+      'accuracyScore': accuracyScore,
+      'spokenForm': spokenForm,
+    };
+  }
+
+  factory PronunciationWordResult.fromMap(Map<String, dynamic> map) {
+    return PronunciationWordResult(
+      word: map['word']?.toString() ?? '',
+      errorType: PronunciationWordErrorX.fromKey(map['errorType']?.toString()),
+      accuracyScore: (map['accuracyScore'] as num?)?.toDouble(),
+      spokenForm: map['spokenForm']?.toString(),
+    );
+  }
+}
+
+class PronunciationPhonemeIssue {
+  final String expected;
+  final String? spoken;
+  final double? accuracyScore;
+  final String? coachingHint;
+
+  const PronunciationPhonemeIssue({
+    required this.expected,
+    this.spoken,
+    this.accuracyScore,
+    this.coachingHint,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'expected': expected,
+      'spoken': spoken,
+      'accuracyScore': accuracyScore,
+      'coachingHint': coachingHint,
+    };
+  }
+
+  factory PronunciationPhonemeIssue.fromMap(Map<String, dynamic> map) {
+    return PronunciationPhonemeIssue(
+      expected: map['expected']?.toString() ?? '',
+      spoken: map['spoken']?.toString(),
+      accuracyScore: (map['accuracyScore'] as num?)?.toDouble(),
+      coachingHint: map['coachingHint']?.toString(),
+    );
+  }
+}
+
 enum WeakPointTagType { phoneme, word, rhythm, stress, linkedSpeech }
 
 extension WeakPointTagTypeX on WeakPointTagType {
@@ -61,8 +165,8 @@ extension SpeechAttemptSourceX on SpeechAttemptSource {
   };
 
   String get label => switch (this) {
-    SpeechAttemptSource.cloud => '云端评测',
-    SpeechAttemptSource.localFallback => '本地回退',
+    SpeechAttemptSource.cloud => 'Azure 声学评测',
+    SpeechAttemptSource.localFallback => '识别对齐（非声学）',
   };
 
   static SpeechAttemptSource fromKey(String? value) {
@@ -161,6 +265,13 @@ class SpeechFeedback {
   final bool fallbackUsed;
   final List<WeakPointTag> weakPointTags;
   final DateTime generatedAt;
+  final PronunciationAssessmentKind assessmentKind;
+  final double? accuracyScore;
+  final double? fluencyScore;
+  final double? completenessScore;
+  final double? pronScore;
+  final List<PronunciationWordResult> wordResults;
+  final List<PronunciationPhonemeIssue> phonemeIssues;
 
   const SpeechFeedback({
     required this.recognizedText,
@@ -174,7 +285,18 @@ class SpeechFeedback {
     required this.fallbackUsed,
     required this.weakPointTags,
     required this.generatedAt,
+    this.assessmentKind = PronunciationAssessmentKind.recognitionAlignment,
+    this.accuracyScore,
+    this.fluencyScore,
+    this.completenessScore,
+    this.pronScore,
+    this.wordResults = const [],
+    this.phonemeIssues = const [],
   });
+
+  bool get isAcoustic => assessmentKind.isAcoustic;
+
+  double? get overallAcousticScore => pronScore ?? accuracyScore;
 
   Map<String, dynamic> toMap() {
     return {
@@ -189,11 +311,20 @@ class SpeechFeedback {
       'fallbackUsed': fallbackUsed,
       'weakPointTags': weakPointTags.map((item) => item.toMap()).toList(),
       'generatedAt': generatedAt.toIso8601String(),
+      'assessmentKind': assessmentKind.key,
+      'accuracyScore': accuracyScore,
+      'fluencyScore': fluencyScore,
+      'completenessScore': completenessScore,
+      'pronScore': pronScore,
+      'wordResults': wordResults.map((item) => item.toMap()).toList(),
+      'phonemeIssues': phonemeIssues.map((item) => item.toMap()).toList(),
     };
   }
 
   factory SpeechFeedback.fromMap(Map<String, dynamic> map) {
     final rawWeakTags = map['weakPointTags'] as List<dynamic>? ?? const [];
+    final rawWords = map['wordResults'] as List<dynamic>? ?? const [];
+    final rawPhonemes = map['phonemeIssues'] as List<dynamic>? ?? const [];
 
     return SpeechFeedback(
       recognizedText: map['recognizedText']?.toString() ?? '',
@@ -222,6 +353,29 @@ class SpeechFeedback {
       generatedAt:
           DateTime.tryParse(map['generatedAt']?.toString() ?? '') ??
           DateTime.now(),
+      assessmentKind: PronunciationAssessmentKindX.fromKey(
+        map['assessmentKind']?.toString(),
+      ),
+      accuracyScore: (map['accuracyScore'] as num?)?.toDouble(),
+      fluencyScore: (map['fluencyScore'] as num?)?.toDouble(),
+      completenessScore: (map['completenessScore'] as num?)?.toDouble(),
+      pronScore: (map['pronScore'] as num?)?.toDouble(),
+      wordResults: rawWords
+          .whereType<Map<dynamic, dynamic>>()
+          .map(
+            (item) => PronunciationWordResult.fromMap(
+              item.map((key, value) => MapEntry(key.toString(), value)),
+            ),
+          )
+          .toList(),
+      phonemeIssues: rawPhonemes
+          .whereType<Map<dynamic, dynamic>>()
+          .map(
+            (item) => PronunciationPhonemeIssue.fromMap(
+              item.map((key, value) => MapEntry(key.toString(), value)),
+            ),
+          )
+          .toList(),
     );
   }
 }

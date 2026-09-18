@@ -1,4 +1,6 @@
 import '../models/lesson.dart';
+import 'chinese_l1_phoneme_coach.dart';
+import 'word_alignment.dart';
 
 enum PronunciationCheckLevel { retry, partial, good }
 
@@ -11,6 +13,8 @@ class PronunciationCheckResult {
   final List<String> matchedFocusWords;
   final List<String> missingFocusWords;
   final List<String> notes;
+  final List<AlignedWord> wordAlignments;
+  final List<String> l1CoachingHints;
 
   const PronunciationCheckResult({
     required this.referenceText,
@@ -21,6 +25,8 @@ class PronunciationCheckResult {
     required this.matchedFocusWords,
     required this.missingFocusWords,
     required this.notes,
+    this.wordAlignments = const [],
+    this.l1CoachingHints = const [],
   });
 
   bool get hasTranscript => transcript.trim().isNotEmpty;
@@ -69,50 +75,56 @@ class PronunciationCheckEngine {
         ? extractFocusWords(step)
         : extractFocusWordsFromText(resolvedReferenceText);
 
-    final expectedWords = _uniqueTokens(_tokenize(resolvedReferenceText));
-    final spokenWords = _uniqueTokens(_tokenize(transcript));
+    final expectedWords = _tokenize(resolvedReferenceText);
+    final spokenWords = _tokenize(transcript);
+    final alignment = const WordAligner().align(
+      expected: expectedWords,
+      spoken: spokenWords,
+    );
+    final spokenSet = spokenWords.toSet();
 
-    final matchedWords = expectedWords.where(spokenWords.contains).toList();
-    final missingWords = expectedWords
-        .where((word) => !spokenWords.contains(word))
-        .take(8)
-        .toList();
     final matchedFocusWords = resolvedFocusWords
-        .where(spokenWords.contains)
+        .where(spokenSet.contains)
         .toList();
     final missingFocusWords = resolvedFocusWords
-        .where((word) => !spokenWords.contains(word))
+        .where((word) => !spokenSet.contains(word))
         .toList();
-
-    final recognitionCoverage = expectedWords.isEmpty
-        ? 0.0
-        : matchedWords.length / expectedWords.length;
+    final l1Hints = const ChineseL1PhonemeCoach().hintsForWords([
+      ...missingFocusWords,
+      ...alignment.substitutedWords,
+      ...alignment.missingWords,
+    ]);
 
     final notes = <String>[
       if (transcript.trim().isEmpty)
         '还没有识别到有效英文，先检查浏览器麦克风权限、环境噪音和说话音量。'
-      else if (recognitionCoverage < 0.35)
-        '识别线索较低，建议先放慢语速，只读一组词或一句短句。'
-      else if (recognitionCoverage < 0.72)
-        '句子主体已经被部分识别，下一轮优先把缺失的关键词说完整。'
+      else if (alignment.coverage < 0.35)
+        '识别对齐较低，建议先放慢语速，只读一组词或一句短句。'
+      else if (alignment.coverage < 0.72)
+        '句子主体已经被部分对齐，下一轮优先把缺失或被替换的关键词说完整。'
       else
-        '这次识别已经抓到大部分主体内容，可以继续回头修边界和节奏。',
+        '这次识别已经按顺序抓到大部分主体内容，可以继续回头修边界和节奏。',
+      if (alignment.substitutedWords.isNotEmpty)
+        '被识别成别的词：${alignment.alignments.where((item) => item.status == WordAlignStatus.substitute).map((item) => item.displayLabel).join(' / ')}',
       if (missingFocusWords.isNotEmpty)
         '重点词还没稳定识别出来：${missingFocusWords.join(' / ')}',
       if (matchedFocusWords.isNotEmpty)
         '已识别到的重点词：${matchedFocusWords.join(' / ')}',
-      '这是基于语音识别的自动检查，不是声学发音评分。',
+      ...l1Hints,
+      '这是基于语音识别的词级对齐，不是声学发音评分。配置 Azure Speech 后才会给出词/音素准确度。',
     ];
 
     return PronunciationCheckResult(
       referenceText: resolvedReferenceText,
       transcript: transcript.trim(),
-      recognitionCoverage: recognitionCoverage.clamp(0.0, 1.0),
-      matchedWords: matchedWords,
-      missingWords: missingWords,
+      recognitionCoverage: alignment.coverage,
+      matchedWords: alignment.matchedWords,
+      missingWords: alignment.missingWords.take(8).toList(),
       matchedFocusWords: matchedFocusWords,
       missingFocusWords: missingFocusWords,
       notes: notes,
+      wordAlignments: alignment.alignments,
+      l1CoachingHints: l1Hints,
     );
   }
 

@@ -1,4 +1,7 @@
+import '../../../services/azure_pronunciation_client.dart';
+import '../../../services/chinese_l1_phoneme_coach.dart';
 import '../../../services/pronunciation_check_engine.dart';
+import '../../../services/word_alignment.dart';
 import '../../domain/models/course_models.dart';
 import '../../domain/models/speech_models.dart';
 
@@ -9,7 +12,16 @@ class SpeechFeedbackEngine {
     required PronunciationCheckResult result,
     required SpeakingPrompt prompt,
     required bool fallbackUsed,
+    AzurePronunciationAssessment? azure,
   }) {
+    if (azure != null) {
+      return _buildAzure(
+        result: result,
+        prompt: prompt,
+        azure: azure,
+      );
+    }
+
     final recognizedWords = _tokenize(result.transcript);
     final expectedWords = _tokenize(result.referenceText);
     final spokenWords = recognizedWords.toSet();
@@ -35,6 +47,23 @@ class SpeechFeedbackEngine {
     final missingPhrases = prompt.phraseDrills
         .where((item) => !_fragmentCovered(item, spokenWords))
         .take(2)
+        .toList();
+    final wordResults = result.wordAlignments
+        .map(
+          (item) => PronunciationWordResult(
+            word: item.status == WordAlignStatus.extra
+                ? item.spoken
+                : item.expected,
+            spokenForm: item.spoken.isEmpty ? null : item.spoken,
+            errorType: switch (item.status) {
+              WordAlignStatus.match => PronunciationWordError.none,
+              WordAlignStatus.substitute =>
+                PronunciationWordError.mispronunciation,
+              WordAlignStatus.missing => PronunciationWordError.omission,
+              WordAlignStatus.extra => PronunciationWordError.insertion,
+            },
+          ),
+        )
         .toList();
 
     return SpeechFeedback(
@@ -70,8 +99,138 @@ class SpeechFeedbackEngine {
         paceBand: paceBand,
         weakWords: weakWords,
         missingPhrases: missingPhrases,
+        l1Hints: result.l1CoachingHints,
       ),
       generatedAt: DateTime.now(),
+      assessmentKind: PronunciationAssessmentKind.recognitionAlignment,
+      wordResults: wordResults,
+      phonemeIssues: result.l1CoachingHints
+          .map(
+            (hint) => PronunciationPhonemeIssue(
+              expected: hint.split('：').first,
+              coachingHint: hint,
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  SpeechFeedback _buildAzure({
+    required PronunciationCheckResult result,
+    required SpeakingPrompt prompt,
+    required AzurePronunciationAssessment azure,
+  }) {
+    const coach = ChineseL1PhonemeCoach();
+    final weakWords = azure.weakWords
+        .map((item) => item.word)
+        .where((item) => item.trim().isNotEmpty)
+        .toList();
+    final phonemeIssues = <PronunciationPhonemeIssue>[];
+    for (final word in azure.words) {
+      for (final phoneme in word.phonemes) {
+        if (phoneme.accuracyScore >= 60) {
+          continue;
+        }
+        phonemeIssues.add(
+          PronunciationPhonemeIssue(
+            expected: phoneme.phoneme,
+            spoken: phoneme.spokenPhoneme,
+            accuracyScore: phoneme.accuracyScore,
+            coachingHint: coach.hintForPhoneme(phoneme.phoneme),
+          ),
+        );
+      }
+    }
+
+    final spokenWords = _tokenize(azure.recognizedText).toSet();
+    final missingPhrases = prompt.phraseDrills
+        .where((item) => !_fragmentCovered(item, spokenWords))
+        .take(2)
+        .toList();
+    final paceBand = switch (azure.fluencyScore) {
+      < 60 => PaceBand.tooSlow,
+      > 92 when azure.completenessScore < 85 => PaceBand.tooFast,
+      _ => PaceBand.balanced,
+    };
+    final fluencyBand = switch (azure.pronScore) {
+      >= 80 => FluencyBand.confident,
+      >= 60 => FluencyBand.steady,
+      _ => FluencyBand.emerging,
+    };
+    final l1Hints = coach.hintsForWords(weakWords);
+    final wordResults = azure.words
+        .map(
+          (item) => PronunciationWordResult(
+            word: item.word,
+            accuracyScore: item.accuracyScore,
+            errorType: PronunciationWordErrorX.fromKey(item.errorType),
+          ),
+        )
+        .toList();
+
+    final accuracy = azure.accuracyScore.round();
+    final fluency = azure.fluencyScore.round();
+    final completeness = azure.completenessScore.round();
+    final pron = azure.pronScore.round();
+    final phonemeLine = phonemeIssues.isEmpty
+        ? '这一轮没有低分音素。'
+        : '低分音素：${phonemeIssues.take(3).map((item) => item.spoken == null ? item.expected : '${item.expected}→${item.spoken}').join(' / ')}。';
+    final weakLine = weakWords.isEmpty
+        ? '词级准确度目前比较稳。'
+        : '需要盯住 ${weakWords.take(3).join(' / ')}。';
+
+    return SpeechFeedback(
+      recognizedText: azure.recognizedText.isEmpty
+          ? result.transcript
+          : azure.recognizedText,
+      coverageScore: (azure.completenessScore / 100).clamp(0, 1),
+      fluencyBand: fluencyBand,
+      paceBand: paceBand,
+      stressHints: [
+        '综合发音分 $pron（准确 $accuracy / 流利 $fluency / 完整 $completeness）。',
+        ..._buildStressHints(
+          prompt: prompt,
+          paceBand: paceBand,
+          weakWords: weakWords,
+          missingPhrases: missingPhrases,
+        ),
+      ].take(3).toList(),
+      weakWords: weakWords.take(4).toList(),
+      retrySuggestions: [
+        if (weakWords.isNotEmpty) '先单练 ${weakWords.take(2).join(' / ')}，再回到整句。',
+        if (phonemeIssues.isNotEmpty && phonemeIssues.first.coachingHint != null)
+          phonemeIssues.first.coachingHint!,
+        ...l1Hints.take(2),
+        if (prompt.sentenceVariations.isNotEmpty)
+          '换一句变体再开口：${prompt.sentenceVariations.first}',
+      ].take(4).toList(),
+      teacherExplanation:
+          '这是 Azure 声学评测，不是识别覆盖率。综合分 $pron，准确度 $accuracy，流利度 $fluency，完整度 $completeness。$weakLine $phonemeLine ${prompt.rhythmCue.trim()}',
+      fallbackUsed: false,
+      weakPointTags: [
+        ...weakWords.take(3).map(
+          (word) => WeakPointTag(
+            label: word,
+            type: WeakPointTagType.word,
+            reason: 'Azure 把这个词标成低准确度或漏读/误读。',
+          ),
+        ),
+        ...phonemeIssues.take(2).map(
+          (item) => WeakPointTag(
+            label: item.expected,
+            type: WeakPointTagType.phoneme,
+            reason: item.coachingHint ?? '这个音素的声学准确度偏低。',
+          ),
+        ),
+      ].take(4).toList(),
+      generatedAt: DateTime.now(),
+      assessmentKind: PronunciationAssessmentKind.azureAcoustic,
+      accuracyScore: azure.accuracyScore,
+      fluencyScore: azure.fluencyScore,
+      completenessScore: azure.completenessScore,
+      pronScore: azure.pronScore,
+      wordResults: wordResults,
+      phonemeIssues: phonemeIssues.take(6).toList(),
     );
   }
 
@@ -185,9 +344,9 @@ class SpeechFeedbackEngine {
   }) {
     final coverage = (result.recognitionCoverage * 100).round();
     final coverageLine = switch (result.recognitionCoverage) {
-      >= 0.82 => '这轮可理解度线索不错，识别到的主干约 $coverage%。',
-      >= 0.56 => '这轮大意基本能被抓到，识别到的主干约 $coverage%。',
-      _ => '这轮还在找句子骨架，识别到的主干约 $coverage%。',
+      >= 0.82 => '这轮识别对齐不错，按词序对上的主干约 $coverage%。这不是声学评分。',
+      >= 0.56 => '这轮大意基本能被对齐，按词序对上的主干约 $coverage%。这不是声学评分。',
+      _ => '这轮还在找句子骨架，按词序对上的主干约 $coverage%。这不是声学评分。',
     };
     final modeLine = switch (prompt.kind) {
       ActivityKind.shadowing => '影子跟读先追求整口气的连贯感，再修局部发音。',
@@ -216,13 +375,21 @@ class SpeechFeedbackEngine {
     required PaceBand paceBand,
     required List<String> weakWords,
     required List<String> missingPhrases,
+    List<String> l1Hints = const [],
   }) {
     final tags = <WeakPointTag>[
       ...weakWords.map(
         (word) => WeakPointTag(
           label: word,
           type: WeakPointTagType.word,
-          reason: '这一轮里它还没有稳定落出来，需要单独再练后回到整句。',
+          reason: '这一轮里它还没有按词序稳定对齐出来，需要单独再练后回到整句。',
+        ),
+      ),
+      ...l1Hints.take(2).map(
+        (hint) => WeakPointTag(
+          label: hint.split('：').first,
+          type: WeakPointTagType.phoneme,
+          reason: hint,
         ),
       ),
     ];

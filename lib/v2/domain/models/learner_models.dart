@@ -79,7 +79,14 @@ class LearnerProfileV2 {
   String get accentShortLabel => accentPreference.accentShortLabel;
 }
 
-enum DailyPlanItemKind { lesson, review, speaking, assessment, dialogue }
+enum DailyPlanItemKind {
+  session,
+  lesson,
+  review,
+  speaking,
+  assessment,
+  dialogue,
+}
 
 class DailyPlanItem {
   final String id;
@@ -119,6 +126,8 @@ class ReviewItem {
   final String reason;
   final ActivityKind recommendedActivityKind;
   final double score;
+  final String? dueLabel;
+  final String? trackLabel;
 
   const ReviewItem({
     required this.id,
@@ -126,6 +135,8 @@ class ReviewItem {
     required this.reason,
     required this.recommendedActivityKind,
     required this.score,
+    this.dueLabel,
+    this.trackLabel,
   });
 }
 
@@ -148,6 +159,8 @@ class MasterySnapshot {
   final List<WeakPointSummary> weakPoints;
   final List<ReviewItem> reviewQueue;
   final String recommendedFocus;
+  final int dueTodayCount;
+  final int upcomingCount;
 
   const MasterySnapshot({
     required this.streakDays,
@@ -156,6 +169,8 @@ class MasterySnapshot {
     required this.weakPoints,
     required this.reviewQueue,
     required this.recommendedFocus,
+    this.dueTodayCount = 0,
+    this.upcomingCount = 0,
   });
 }
 
