@@ -72,6 +72,23 @@ class ProgressJourneyScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
+                  '本周连续',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 12),
+                WeekStreakRow(
+                  streakDays: progress.streakDays,
+                  lastActiveDate: progress.lastActiveDate,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          DailyCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
                   '开口旅程',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
                 ),

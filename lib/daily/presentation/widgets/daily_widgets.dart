@@ -12,7 +12,7 @@ class DailyPage extends StatelessWidget {
     super.key,
     required this.child,
     this.maxWidth = 760,
-    this.padding = const EdgeInsets.fromLTRB(20, 16, 20, 120),
+    this.padding = const EdgeInsets.fromLTRB(20, 16, 20, 168),
   });
 
   @override
@@ -243,6 +243,69 @@ class WordChipRow extends StatelessWidget {
           ),
         );
       }).toList(),
+    );
+  }
+}
+
+class WeekStreakRow extends StatelessWidget {
+  final int streakDays;
+  final DateTime? lastActiveDate;
+
+  const WeekStreakRow({
+    super.key,
+    required this.streakDays,
+    this.lastActiveDate,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final last = lastActiveDate == null
+        ? null
+        : DateTime(
+            lastActiveDate!.year,
+            lastActiveDate!.month,
+            lastActiveDate!.day,
+          );
+    final labels = const ['一', '二', '三', '四', '五', '六', '日'];
+    return Row(
+      children: List.generate(7, (index) {
+        final weekday = index + 1;
+        final day = today.subtract(Duration(days: today.weekday - weekday));
+        final isFuture = day.isAfter(today);
+        final isFilled =
+            !isFuture &&
+            streakDays > 0 &&
+            last != null &&
+            !day.isAfter(last) &&
+            today.difference(day).inDays < streakDays;
+        return Expanded(
+          child: Column(
+            children: [
+              Text(
+                labels[index],
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Container(
+                width: 14,
+                height: 14,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isFilled
+                      ? AppColors.streakFlame
+                      : AppColors.surfaceAccent,
+                ),
+              ),
+            ],
+          ),
+        );
+      }),
     );
   }
 }

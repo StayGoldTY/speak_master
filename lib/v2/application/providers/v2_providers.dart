@@ -2,9 +2,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../daily/application/session_composer.dart';
 import '../../../daily/domain/session_models.dart';
+import '../../../models/user_progress.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/progress_provider.dart';
 import '../../../providers/service_providers.dart';
+import '../../../services/storage_service.dart';
 import '../../domain/models/course_models.dart';
 import '../../domain/models/learner_models.dart';
 import '../../domain/models/speech_models.dart';
@@ -126,15 +128,76 @@ final v2UnitProvider = Provider.family<UnitBlueprint?, String>((ref, unitId) {
   return ref.watch(v2LearningRepositoryProvider).getUnitById(unitId);
 });
 
-final v2DailyPlanProvider = Provider<DailyPlan>((ref) {
-  final repo = ref.watch(v2LearningRepositoryProvider);
-  final progress = ref.watch(progressProvider);
-  final learner = ref.watch(v2LearnerProfileProvider);
-
+DailyPlan _composeLiveDailyPlan({
+  required V2LearningRepository repo,
+  required UserProgress progress,
+  required LearnerProfileV2 learner,
+}) {
   return repo.buildDailyPlan(
     progress: progress,
     learnerName: learner.displayName,
     learner: learner,
+  );
+}
+
+class FrozenDailyPlanNotifier extends StateNotifier<DailyPlan?> {
+  final Ref _ref;
+
+  FrozenDailyPlanNotifier(this._ref) : super(null) {
+    _hydrate();
+  }
+
+  Future<void> _hydrate() async {
+    final storage = _ref.read(storageServiceProvider);
+    await storage.init();
+    final today = storage.todayKey();
+    final frozen = storage.loadFrozenDailyPlan(today);
+    if (frozen != null && frozen.items.isNotEmpty) {
+      state = frozen;
+      return;
+    }
+    if (state != null && state!.items.isNotEmpty) {
+      await storage.saveFrozenDailyPlan(dateKey: today, plan: state!);
+      return;
+    }
+    final live = _composeLiveDailyPlan(
+      repo: _ref.read(v2LearningRepositoryProvider),
+      progress: storage.loadProgress(),
+      learner: _learnerFromStorage(storage),
+    );
+    state = live;
+    await storage.saveFrozenDailyPlan(dateKey: today, plan: live);
+  }
+
+  LearnerProfileV2 _learnerFromStorage(StorageService storage) {
+    final auth = _ref.read(authProvider);
+    return LearnerProfileV2(
+      displayName: auth.profile?.displayName ?? '学习者',
+      goal: LearningGoalX.fromKey(storage.loadV2LearningGoal()),
+      placementLevel: PlacementLevelX.fromKey(storage.loadV2PlacementLevel()),
+      accentPreference:
+          auth.profile?.accentPreference ?? storage.loadAccentPreference(),
+      dailyMinutes: storage.loadV2DailyMinutes(),
+      onboardingComplete: storage.loadV2OnboardingComplete(),
+    );
+  }
+}
+
+final frozenDailyPlanProvider =
+    StateNotifierProvider<FrozenDailyPlanNotifier, DailyPlan?>((ref) {
+      return FrozenDailyPlanNotifier(ref);
+    });
+
+final v2DailyPlanProvider = Provider<DailyPlan>((ref) {
+  final frozen = ref.watch(frozenDailyPlanProvider);
+  if (frozen != null && frozen.items.isNotEmpty) {
+    return frozen;
+  }
+
+  return _composeLiveDailyPlan(
+    repo: ref.watch(v2LearningRepositoryProvider),
+    progress: ref.watch(progressProvider),
+    learner: ref.watch(v2LearnerProfileProvider),
   );
 });
 

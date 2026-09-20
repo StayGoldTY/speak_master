@@ -72,28 +72,58 @@ class V2ShellScaffold extends StatelessWidget {
                   onDestinationSelected: (index) => _goTo(context, index),
                   destinations: const [
                     NavigationDestination(
-                      icon: Icon(Icons.wb_sunny_outlined),
-                      selectedIcon: Icon(Icons.wb_sunny_rounded),
+                      icon: Icon(
+                        Icons.wb_sunny_outlined,
+                        semanticLabel: '导航今日',
+                      ),
+                      selectedIcon: Icon(
+                        Icons.wb_sunny_rounded,
+                        semanticLabel: '导航今日',
+                      ),
                       label: '今日',
                     ),
                     NavigationDestination(
-                      icon: Icon(Icons.route_outlined),
-                      selectedIcon: Icon(Icons.route_rounded),
+                      icon: Icon(
+                        Icons.route_outlined,
+                        semanticLabel: '导航课程',
+                      ),
+                      selectedIcon: Icon(
+                        Icons.route_rounded,
+                        semanticLabel: '导航课程',
+                      ),
                       label: '课程',
                     ),
                     NavigationDestination(
-                      icon: Icon(Icons.graphic_eq_outlined),
-                      selectedIcon: Icon(Icons.graphic_eq_rounded),
+                      icon: Icon(
+                        Icons.graphic_eq_outlined,
+                        semanticLabel: '导航开口',
+                      ),
+                      selectedIcon: Icon(
+                        Icons.graphic_eq_rounded,
+                        semanticLabel: '导航开口',
+                      ),
                       label: '开口',
                     ),
                     NavigationDestination(
-                      icon: Icon(Icons.insights_outlined),
-                      selectedIcon: Icon(Icons.insights_rounded),
+                      icon: Icon(
+                        Icons.insights_outlined,
+                        semanticLabel: '导航进度',
+                      ),
+                      selectedIcon: Icon(
+                        Icons.insights_rounded,
+                        semanticLabel: '导航进度',
+                      ),
                       label: '进度',
                     ),
                     NavigationDestination(
-                      icon: Icon(Icons.person_outline_rounded),
-                      selectedIcon: Icon(Icons.person_rounded),
+                      icon: Icon(
+                        Icons.person_outline_rounded,
+                        semanticLabel: '导航我的',
+                      ),
+                      selectedIcon: Icon(
+                        Icons.person_rounded,
+                        semanticLabel: '导航我的',
+                      ),
                       label: '我的',
                     ),
                   ],

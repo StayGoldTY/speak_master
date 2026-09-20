@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../daily/domain/session_models.dart';
 import '../models/user_progress.dart';
+import '../v2/domain/models/learner_models.dart';
 
 class StorageService {
   StorageService._internal();
@@ -35,6 +36,7 @@ class StorageService {
   static const _keyDailyLoopDate = 'daily_loop_date';
   static const _keyDailyCompletedTasks = 'daily_completed_task_ids';
   static const _keyPracticeLog = 'daily_practice_log';
+  static const _keyFrozenDailyPlan = 'daily_frozen_plan';
 
   SharedPreferences? _prefs;
 
@@ -250,6 +252,46 @@ class StorageService {
         })
         .whereType<PracticeLogEntry>()
         .toList();
+  }
+
+  DailyPlan? loadFrozenDailyPlan(String dateKey) {
+    final prefs = _prefs;
+    if (prefs == null) {
+      return null;
+    }
+    final raw = prefs.getString(_keyFrozenDailyPlan);
+    if (raw == null || raw.trim().isEmpty) {
+      return null;
+    }
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) {
+        return null;
+      }
+      if (decoded['dateKey']?.toString() != dateKey) {
+        return null;
+      }
+      final plan = decoded['plan'];
+      if (plan is! Map) {
+        return null;
+      }
+      return DailyPlan.fromJson(
+        plan.map((key, value) => MapEntry(key.toString(), value)),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> saveFrozenDailyPlan({
+    required String dateKey,
+    required DailyPlan plan,
+  }) async {
+    await init();
+    await _prefs!.setString(
+      _keyFrozenDailyPlan,
+      jsonEncode({'dateKey': dateKey, 'plan': plan.toJson()}),
+    );
   }
 
   Future<void> savePracticeLog(List<PracticeLogEntry> entries) async {

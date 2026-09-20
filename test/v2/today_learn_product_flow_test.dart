@@ -6,6 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speak_master/core/theme/app_theme.dart';
 import 'package:speak_master/daily/presentation/screens/learn_path_screen.dart';
 import 'package:speak_master/daily/presentation/screens/today_home_screen.dart';
+import 'package:speak_master/providers/progress_provider.dart';
+import 'package:speak_master/v2/application/providers/v2_providers.dart';
 import 'package:speak_master/v2/application/services/legacy_seed_learning_repository.dart';
 
 void main() {
@@ -167,6 +169,54 @@ void main() {
 
       expect(find.byKey(const ValueKey('today-goal-complete')), findsOneWidget);
       expect(find.text('今日目标完成'), findsOneWidget);
+    });
+
+    testWidgets('today lesson card stays frozen after that lesson is completed', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({
+        'v2_onboarding_complete': true,
+        'v2_learning_goal': 'pronunciationConfidence',
+        'v2_placement_level': 'starter',
+        'v2_daily_minutes': 15,
+      });
+
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final router = GoRouter(
+        initialLocation: '/today',
+        routes: [
+          GoRoute(
+            path: '/today',
+            builder: (context, state) => const TodayHomeScreen(),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(
+            theme: AppTheme.light,
+            routerConfig: router,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final frozen = container.read(v2DailyPlanProvider);
+      final lessonTitle = frozen.items.first.title;
+      final lessonId = frozen.items.first.targetId;
+      expect(find.text(lessonTitle), findsWidgets);
+
+      await container.read(progressProvider.notifier).completeLesson(lessonId);
+      await tester.pumpAndSettle();
+
+      expect(find.text(lessonTitle), findsWidgets);
+      expect(
+        container.read(v2DailyPlanProvider).items.first.targetId,
+        lessonId,
+      );
     });
   });
 }
