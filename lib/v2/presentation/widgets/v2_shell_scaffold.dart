@@ -41,28 +41,27 @@ class V2ShellScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.bgLight,
       extendBody: true,
       body: child,
       bottomNavigationBar: SafeArea(
         top: false,
-        minimum: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+        minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
         child: Align(
           alignment: Alignment.bottomCenter,
           heightFactor: 1,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 760),
+            constraints: const BoxConstraints(maxWidth: 560),
             child: DecoratedBox(
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.92),
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(28),
-                border: Border.all(
-                  color: AppColors.glassBorder.withValues(alpha: 0.7),
-                ),
+                border: Border.all(color: AppColors.glassBorder),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.12),
-                    blurRadius: 32,
-                    offset: const Offset(0, 16),
+                    color: AppColors.ink.withValues(alpha: 0.08),
+                    blurRadius: 24,
+                    offset: const Offset(0, 10),
                   ),
                 ],
               ),
@@ -73,28 +72,28 @@ class V2ShellScaffold extends StatelessWidget {
                   onDestinationSelected: (index) => _goTo(context, index),
                   destinations: const [
                     NavigationDestination(
-                      icon: Icon(Icons.today_outlined),
-                      selectedIcon: Icon(Icons.today),
+                      icon: Icon(Icons.wb_sunny_outlined),
+                      selectedIcon: Icon(Icons.wb_sunny_rounded),
                       label: '今日',
                     ),
                     NavigationDestination(
-                      icon: Icon(Icons.school_outlined),
-                      selectedIcon: Icon(Icons.school),
+                      icon: Icon(Icons.route_outlined),
+                      selectedIcon: Icon(Icons.route_rounded),
                       label: '课程',
                     ),
                     NavigationDestination(
-                      icon: Icon(Icons.multitrack_audio_outlined),
-                      selectedIcon: Icon(Icons.multitrack_audio),
-                      label: '口语',
+                      icon: Icon(Icons.graphic_eq_outlined),
+                      selectedIcon: Icon(Icons.graphic_eq_rounded),
+                      label: '开口',
                     ),
                     NavigationDestination(
-                      icon: Icon(Icons.auto_graph_outlined),
-                      selectedIcon: Icon(Icons.auto_graph),
+                      icon: Icon(Icons.insights_outlined),
+                      selectedIcon: Icon(Icons.insights_rounded),
                       label: '进度',
                     ),
                     NavigationDestination(
-                      icon: Icon(Icons.person_outline),
-                      selectedIcon: Icon(Icons.person),
+                      icon: Icon(Icons.person_outline_rounded),
+                      selectedIcon: Icon(Icons.person_rounded),
                       label: '我的',
                     ),
                   ],

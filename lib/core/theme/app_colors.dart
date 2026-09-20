@@ -3,34 +3,39 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  static const primary = Color(0xFF114B6B);
-  static const primaryDark = Color(0xFF0C334C);
-  static const primaryLight = Color(0xFF4F7FA3);
+  static const primary = Color(0xFF5B4DFF);
+  static const primaryDark = Color(0xFF3B2FD4);
+  static const primaryLight = Color(0xFF8B80FF);
 
-  static const secondary = Color(0xFF1D9A87);
-  static const secondaryDark = Color(0xFF166F63);
-  static const secondaryLight = Color(0xFF7BD5C4);
+  static const secondary = Color(0xFF0F8F7A);
+  static const secondaryDark = Color(0xFF0B6B5C);
+  static const secondaryLight = Color(0xFF5ED0BE);
 
-  static const accent = Color(0xFFFF7A59);
-  static const accentOrange = Color(0xFFF1B24A);
+  static const accent = Color(0xFFFF6B4A);
+  static const accentOrange = Color(0xFFF5A524);
 
-  static const streakFlame = Color(0xFFFF8A4C);
-  static const xpGold = Color(0xFFE9BD56);
-  static const successGreen = Color(0xFF2FA67A);
-  static const errorRed = Color(0xFFD85A63);
-  static const warningYellow = Color(0xFFFFC857);
+  static const streakFlame = Color(0xFFFF6B2C);
+  static const xpGold = Color(0xFFF5B544);
+  static const successGreen = Color(0xFF12B76A);
+  static const errorRed = Color(0xFFF04438);
+  static const warningYellow = Color(0xFFF79009);
 
-  static const bgLight = Color(0xFFF8F4EE);
-  static const bgDark = Color(0xFF0F1C28);
+  static const hit = Color(0xFF12B76A);
+  static const partial = Color(0xFFF79009);
+  static const miss = Color(0xFFF04438);
+
+  static const ink = Color(0xFF161326);
+  static const bgLight = Color(0xFFF4F2FB);
+  static const bgDark = Color(0xFF120F1C);
   static const cardLight = Color(0xFFFFFFFF);
-  static const cardDark = Color(0xFF172635);
-  static const surfaceMuted = Color(0xFFFFFBF6);
-  static const surfaceAccent = Color(0xFFF7EFE3);
-  static const glassBorder = Color(0xFFE7DED1);
+  static const cardDark = Color(0xFF1C1730);
+  static const surfaceMuted = Color(0xFFF7F5FF);
+  static const surfaceAccent = Color(0xFFEEE9FF);
+  static const glassBorder = Color(0xFFE4DFF5);
 
-  static const textPrimary = Color(0xFF13212F);
-  static const textSecondary = Color(0xFF5C6C7A);
-  static const textHint = Color(0xFFA3AFB8);
+  static const textPrimary = Color(0xFF161326);
+  static const textSecondary = Color(0xFF5E5873);
+  static const textHint = Color(0xFF9A94B0);
   static const textOnPrimary = Color(0xFFFFFFFF);
 
   static const vowelColor = Color(0xFFE86F6B);
@@ -40,31 +45,31 @@ class AppColors {
   static const grammarColor = Color(0xFF6C86DA);
 
   static const gradientPrimary = LinearGradient(
-    colors: [Color(0xFF0D3B59), Color(0xFF1A6F7C), Color(0xFF46A792)],
+    colors: [Color(0xFF3B2FD4), Color(0xFF5B4DFF), Color(0xFF8B80FF)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const gradientSuccess = LinearGradient(
-    colors: [Color(0xFF1D9A87), Color(0xFF6FD0BB)],
+    colors: [Color(0xFF0F8F7A), Color(0xFF5ED0BE)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const gradientStreak = LinearGradient(
-    colors: [Color(0xFFFF8A4C), Color(0xFFFFC857)],
+    colors: [Color(0xFFFF6B2C), Color(0xFFF5B544)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const gradientCanvas = LinearGradient(
-    colors: [Color(0xFFFFF9F3), Color(0xFFF5F7FB)],
+    colors: [Color(0xFFF7F5FF), Color(0xFFF4F2FB)],
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
 
   static const gradientSunrise = LinearGradient(
-    colors: [Color(0xFFFFE6D4), Color(0xFFFFF3E7)],
+    colors: [Color(0xFFFFE4D6), Color(0xFFF7F5FF)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );

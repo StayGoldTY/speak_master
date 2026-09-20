@@ -277,47 +277,63 @@ class LegacySeedLearningRepository implements V2LearningRepository {
       prompts: prompts,
       goal: learner.goal,
     );
-    final reviewRoute = progress.pronunciationReviewEntries.isEmpty
-        ? '/speaking'
-        : '/speaking?prompt=${progress.pronunciationReviewEntries.first.sourcePromptId}';
     final allocation = _allocatePlanMinutes(learner.dailyMinutes);
 
+    final reviewTarget = progress.pronunciationReviewEntries.isNotEmpty
+        ? progress.pronunciationReviewEntries.first
+        : null;
+    final reviewId = reviewTarget?.id ??
+        (snapshot.weakPoints.isEmpty
+            ? 'c_θ'
+            : snapshot.weakPoints.first.label);
+    final reviewType = reviewTarget != null ? 'review' : 'sound';
+
     return DailyPlan(
-      headline: '$learnerName 的今日学习',
+      headline: '$learnerName，今天开口这 3 件事',
       subtitle: _buildPlanSubtitle(learner),
       items: [
         DailyPlanItem(
           id: 'plan_lesson',
           title: nextLesson?.title ?? '回顾发音基础',
           subtitle: nextLesson?.description ?? '先把发音底座复习一轮，保持嘴形和节奏感觉。',
-          route: nextLesson == null ? '/speaking' : '/lesson/${nextLesson.id}',
+          route: nextLesson == null
+              ? '/session?type=prompt&id=${transferPrompt.id}&task=plan_lesson'
+              : '/session?type=lesson&id=${nextLesson.id}&task=plan_lesson',
           kind: DailyPlanItemKind.lesson,
           estimatedMinutes: allocation.lessonMinutes,
           xpReward: 20,
+          sessionType: nextLesson == null ? 'prompt' : 'lesson',
+          targetId: nextLesson?.id ?? transferPrompt.id,
         ),
         DailyPlanItem(
           id: 'plan_review',
           title: snapshot.weakPoints.isEmpty
-              ? '做一轮最小对立体复习'
+              ? '练一组容易混的音'
               : '补强 ${snapshot.weakPoints.first.label}',
           subtitle: snapshot.weakPoints.isEmpty
-              ? '趁感觉还在，先复习一组容易混淆的对比音。'
+              ? '先把中文学习者最容易混的音再对一遍。'
               : snapshot.weakPoints.first.description,
-          route: reviewRoute,
+          route:
+              '/session?type=$reviewType&id=${Uri.encodeQueryComponent(reviewId)}&task=plan_review',
           kind: DailyPlanItemKind.review,
           estimatedMinutes: allocation.reviewMinutes,
           xpReward: 10,
+          sessionType: reviewType,
+          targetId: reviewId,
         ),
         DailyPlanItem(
           id: 'plan_transfer',
           title: transferPrompt.title,
           subtitle: transferPrompt.scenario,
-          route: '/speaking?prompt=${transferPrompt.id}',
+          route:
+              '/session?type=prompt&id=${transferPrompt.id}&task=plan_transfer',
           kind: transferPrompt.kind == ActivityKind.assessmentTask
               ? DailyPlanItemKind.assessment
               : DailyPlanItemKind.dialogue,
           estimatedMinutes: allocation.transferMinutes,
           xpReward: 15,
+          sessionType: 'prompt',
+          targetId: transferPrompt.id,
         ),
       ],
     );

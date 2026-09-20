@@ -4,16 +4,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speak_master/core/theme/app_theme.dart';
+import 'package:speak_master/daily/presentation/screens/session_player_screen.dart';
 import 'package:speak_master/v2/application/services/legacy_seed_learning_repository.dart';
-import 'package:speak_master/v2/presentation/screens/lesson_player_screen.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets(
-    'lesson player unlocks completion and persists progress after all activities are done',
+    'session player can finish a lesson without fake scores and persist progress',
     (tester) async {
-      SharedPreferences.setMockInitialValues({});
+      SharedPreferences.setMockInitialValues({
+        'v2_onboarding_complete': true,
+      });
       addTearDown(() => tester.binding.setSurfaceSize(null));
       await tester.binding.setSurfaceSize(const Size(430, 932));
 
@@ -21,17 +23,19 @@ void main() {
       final lesson = repository.getLessonById('u1_L1')!;
 
       final router = GoRouter(
-        initialLocation: '/lesson/${lesson.id}',
+        initialLocation: '/session?type=lesson&id=${lesson.id}&task=plan_lesson',
         routes: [
           GoRoute(
-            path: '/lesson/:lessonId',
-            builder: (context, state) =>
-                LessonPlayerScreen(lessonId: state.pathParameters['lessonId']!),
+            path: '/session',
+            builder: (context, state) => SessionPlayerScreen(
+              type: state.uri.queryParameters['type'] ?? 'lesson',
+              id: state.uri.queryParameters['id'] ?? '',
+              taskId: state.uri.queryParameters['task'],
+            ),
           ),
           GoRoute(
-            path: '/learn',
-            builder: (context, state) =>
-                const Scaffold(body: Text('learn-map')),
+            path: '/today',
+            builder: (context, state) => const Scaffold(body: Text('today')),
           ),
         ],
       );
@@ -46,39 +50,35 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final finishButtonFinder = find.byKey(
-        const ValueKey('finish-lesson-button'),
-      );
-      FilledButton finishButton = tester.widget<FilledButton>(
-        finishButtonFinder,
-      );
-      expect(finishButton.onPressed, isNull);
+      expect(find.text(lesson.activities.first.instruction), findsWidgets);
 
-      for (final activity in lesson.activities) {
-        final activityButton = find.byKey(
-          ValueKey('complete-activity-${activity.id}'),
-        );
-        await tester.ensureVisible(activityButton);
-        await tester.tap(activityButton);
-        await tester.pumpAndSettle();
-      }
-
-      finishButton = tester.widget<FilledButton>(finishButtonFinder);
-      expect(finishButton.onPressed, isNotNull);
-
-      await tester.ensureVisible(finishButtonFinder);
-      await tester.tap(finishButtonFinder);
+      await tester.tap(find.byKey(const ValueKey('session-continue')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('session-continue')));
       await tester.pumpAndSettle();
 
-      expect(find.text('本课已完成'), findsWidgets);
-      expect(find.byKey(const ValueKey('next-lesson-button')), findsOneWidget);
+      final finishFinder = find.byKey(const ValueKey('session-finish'));
+      expect(tester.widget<FilledButton>(finishFinder).onPressed, isNull);
+
+      await tester.tap(find.byKey(const ValueKey('mc-option-opt_1')));
+      await tester.pumpAndSettle();
+      expect(tester.widget<FilledButton>(finishFinder).onPressed, isNotNull);
+
+      await tester.tap(finishFinder);
+      await tester.pumpAndSettle();
+
+      expect(find.text('这节完成了'), findsOneWidget);
+      expect(find.textContaining('不会出现发音总分'), findsOneWidget);
 
       final prefs = await SharedPreferences.getInstance();
       expect(
         prefs.getStringList('completed_lessons') ?? const <String>[],
         contains(lesson.id),
       );
-      expect(prefs.getInt('total_xp'), 10);
+      expect(
+        prefs.getStringList('daily_completed_task_ids') ?? const <String>[],
+        contains('plan_lesson'),
+      );
     },
   );
 }

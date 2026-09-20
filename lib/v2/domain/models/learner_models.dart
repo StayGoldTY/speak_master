@@ -89,6 +89,8 @@ class DailyPlanItem {
   final DailyPlanItemKind kind;
   final int estimatedMinutes;
   final int xpReward;
+  final String sessionType;
+  final String targetId;
 
   const DailyPlanItem({
     required this.id,
@@ -98,6 +100,8 @@ class DailyPlanItem {
     required this.kind,
     required this.estimatedMinutes,
     required this.xpReward,
+    this.sessionType = 'lesson',
+    this.targetId = '',
   });
 }
 
@@ -164,12 +168,14 @@ class V2LearnerSetupState {
   final PlacementLevel placementLevel;
   final int dailyMinutes;
   final bool onboardingComplete;
+  final String accentPreference;
 
   const V2LearnerSetupState({
     required this.goal,
     required this.placementLevel,
     required this.dailyMinutes,
     required this.onboardingComplete,
+    this.accentPreference = 'american',
   });
 
   V2LearnerSetupState copyWith({
@@ -177,12 +183,14 @@ class V2LearnerSetupState {
     PlacementLevel? placementLevel,
     int? dailyMinutes,
     bool? onboardingComplete,
+    String? accentPreference,
   }) {
     return V2LearnerSetupState(
       goal: goal ?? this.goal,
       placementLevel: placementLevel ?? this.placementLevel,
       dailyMinutes: dailyMinutes ?? this.dailyMinutes,
       onboardingComplete: onboardingComplete ?? this.onboardingComplete,
+      accentPreference: accentPreference ?? this.accentPreference,
     );
   }
 }
