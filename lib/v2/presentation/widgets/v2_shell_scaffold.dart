@@ -65,7 +65,9 @@ class V2ShellScaffold extends StatelessWidget {
                   ),
                 ],
               ),
-              child: ClipRRect(
+              child: TooltipVisibility(
+                visible: false,
+                child: ClipRRect(
                 borderRadius: BorderRadius.circular(28),
                 child: NavigationBar(
                   selectedIndex: _selectedIndex(context),
@@ -128,6 +130,7 @@ class V2ShellScaffold extends StatelessWidget {
                     ),
                   ],
                 ),
+              ),
               ),
             ),
           ),

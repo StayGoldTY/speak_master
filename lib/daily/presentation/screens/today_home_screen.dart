@@ -210,43 +210,22 @@ class TodayHomeScreen extends ConsumerWidget {
             );
           }),
           const SizedBox(height: 8),
-          SectionLabel(
-            title: '你的旅程',
-            subtitle: journey.summary,
-          ),
           DailyCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            cardKey: const ValueKey('today-journey-peek'),
+            onTap: () => context.go('/progress'),
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    Text(
-                      journey.band.title,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      '下一站 ${journey.band.nextTitle}',
-                      style: const TextStyle(color: AppColors.textSecondary),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(99),
-                  child: LinearProgressIndicator(
-                    value: journey.progressToNext,
-                    minHeight: 10,
+                Expanded(
+                  child: Text(
+                    '${journey.band.title} → ${journey.band.nextTitle}',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
                 ),
-                const SizedBox(height: 12),
                 Text(
-                  '已完成 ${journey.completedLessons} / ${journey.totalLessons} 节 · 建议每天 ${journey.recommendedMinutes} 分钟',
+                  '${journey.completedLessons}/${journey.totalLessons}',
                   style: const TextStyle(color: AppColors.textSecondary),
                 ),
+                const Icon(Icons.chevron_right_rounded, color: AppColors.textHint),
               ],
             ),
           ),
