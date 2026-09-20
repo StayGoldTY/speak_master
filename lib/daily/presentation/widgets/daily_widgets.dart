@@ -12,7 +12,7 @@ class DailyPage extends StatelessWidget {
     super.key,
     required this.child,
     this.maxWidth = 760,
-    this.padding = const EdgeInsets.fromLTRB(20, 16, 20, 168),
+    this.padding = const EdgeInsets.fromLTRB(20, 16, 20, 196),
   });
 
   @override

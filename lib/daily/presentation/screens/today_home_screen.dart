@@ -76,25 +76,12 @@ class TodayHomeScreen extends ConsumerWidget {
               color: AppColors.textSecondary,
             ),
           ),
-          const SizedBox(height: 16),
-          DailyCard(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  '本周连续',
-                  style: TextStyle(fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 10),
-                WeekStreakRow(
-                  streakDays: progress.streakDays,
-                  lastActiveDate: progress.lastActiveDate,
-                ),
-              ],
-            ),
+          const SizedBox(height: 14),
+          WeekStreakRow(
+            streakDays: progress.streakDays,
+            lastActiveDate: progress.lastActiveDate,
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
           if (goalComplete)
             DailyCard(
               cardKey: const ValueKey('today-goal-complete'),

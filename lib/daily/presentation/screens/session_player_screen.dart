@@ -152,14 +152,7 @@ class _SessionPlayerScreenState extends ConsumerState<SessionPlayerScreen> {
                         onSelectPair: (word) => setState(() => _pairWord = word),
                         onPlay: () => _play(step),
                         onSpeak: () => _speak(step),
-                        onSkipSpeak: () => setState(() {
-                          _error = null;
-                          _alignment = SessionAlignment(
-                            words: const [],
-                            transcript: '',
-                            honestyNote: '这一步先听过，还没有识别对齐。',
-                          );
-                        }),
+                        onSkipSpeak: () => _skipSpeak(),
                       ),
                     ),
                   ),
@@ -187,6 +180,17 @@ class _SessionPlayerScreenState extends ConsumerState<SessionPlayerScreen> {
         ),
       ),
     );
+  }
+
+  void _skipSpeak() {
+    setState(() {
+      _error = null;
+      _alignment = const SessionAlignment(
+        words: [],
+        transcript: '',
+        honestyNote: '这一步先听过，还没有识别对齐。',
+      );
+    });
   }
 
   bool _canContinue(SessionStep step) {
