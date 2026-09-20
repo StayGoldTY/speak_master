@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speak_master/core/theme/app_theme.dart';
+import 'package:speak_master/daily/presentation/screens/speak_lab_screen.dart';
 import 'package:speak_master/v2/application/providers/v2_providers.dart';
 import 'package:speak_master/v2/domain/models/course_models.dart';
 import 'package:speak_master/v2/domain/models/speech_models.dart';
-import 'package:speak_master/v2/presentation/screens/speaking_hub_screen.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -27,8 +28,7 @@ void main() {
         'Today I will speak slowly and clearly.',
         'Today I will sound calm and confident.',
       ],
-      rhythmCue:
-          'Lift the ending slightly instead of dropping every word flat.',
+      rhythmCue: 'Lift the ending slightly instead of dropping every word flat.',
       extensionPrompt: 'Swap one adjective and repeat the sentence.',
     ),
     SpeakingPrompt(
@@ -40,29 +40,6 @@ void main() {
       referenceText: 'Could I get a latte with oat milk?',
       focusWords: ['latte', 'oat', 'milk'],
       checklist: ['Do not swallow the sentence ending.'],
-      warmupWords: ['latte', 'oat milk'],
-      phraseDrills: ['Could I get a latte', 'with oat milk'],
-      sentenceVariations: [
-        'Could I get a hot latte with oat milk?',
-        'Could I get a small latte with oat milk?',
-      ],
-      rhythmCue: 'Let the request flow first, then land the drink details.',
-      extensionPrompt: 'Add size or temperature and say it again.',
-    ),
-    SpeakingPrompt(
-      id: 'assessment-1',
-      kind: ActivityKind.assessmentTask,
-      title: 'TH check',
-      scenario: 'Check whether the th sounds still collapse under speed.',
-      instruction: 'Read the whole sentence once slowly and once naturally.',
-      referenceText: 'Three thin thinkers thought thoughtful thoughts.',
-      focusWords: ['three', 'thin', 'thoughts'],
-      checklist: ['Keep the th sounds visible.'],
-      warmupWords: ['three', 'thin', 'thoughts'],
-      phraseDrills: ['three thin thinkers', 'thought thoughtful thoughts'],
-      sentenceVariations: ['Those thinkers thought three thoughtful things.'],
-      rhythmCue: 'Do not rush the th sounds just to finish the line.',
-      extensionPrompt: 'Say it once slowly and once at natural speed.',
     ),
   ];
 
@@ -78,143 +55,60 @@ void main() {
     ),
   ];
 
-  Widget buildApp() {
-    return ProviderScope(
-      overrides: [
-        v2SpeakingPromptsProvider.overrideWith((ref) => prompts),
-        v2FeaturedTargetsProvider.overrideWith((ref) => targets),
-      ],
-      child: MaterialApp(
-        theme: AppTheme.light,
-        home: const SpeakingHubScreen(),
+  setUp(() {
+    SharedPreferences.setMockInitialValues({
+      'v2_onboarding_complete': true,
+    });
+  });
+
+  testWidgets('speak lab lists scenarios and empty review state', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          v2SpeakingPromptsProvider.overrideWith((ref) => prompts),
+          v2FeaturedTargetsProvider.overrideWith((ref) => targets),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: const SpeakLabScreen(),
+        ),
       ),
     );
-  }
+    await tester.pumpAndSettle();
 
-  Widget buildRoutedApp(String location) {
+    expect(find.text('开口实验室'), findsOneWidget);
+    expect(find.byKey(const ValueKey('speak-review-empty')), findsOneWidget);
+    expect(find.text('Morning shadow warmup'), findsOneWidget);
+    expect(find.text('Coffee order'), findsOneWidget);
+    expect(find.text('/th/'), findsOneWidget);
+    expect(find.textContaining('不编发音分'), findsOneWidget);
+  });
+
+  testWidgets('speak lab can highlight a prompt from the route', (tester) async {
     final router = GoRouter(
-      initialLocation: location,
+      initialLocation: '/speaking?prompt=dialog-1',
       routes: [
         GoRoute(
           path: '/speaking',
-          builder: (context, state) => SpeakingHubScreen(
+          builder: (context, state) => SpeakLabScreen(
             focusPromptId: state.uri.queryParameters['prompt'],
           ),
         ),
       ],
     );
 
-    return ProviderScope(
-      overrides: [
-        v2SpeakingPromptsProvider.overrideWith((ref) => prompts),
-        v2FeaturedTargetsProvider.overrideWith((ref) => targets),
-      ],
-      child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          v2SpeakingPromptsProvider.overrideWith((ref) => prompts),
+          v2FeaturedTargetsProvider.overrideWith((ref) => targets),
+        ],
+        child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+      ),
     );
-  }
+    await tester.pumpAndSettle();
 
-  group('SpeakingHubScreen', () {
-    testWidgets('surfaces a recommended practice card above the prompt list', (
-      tester,
-    ) async {
-      await tester.pumpWidget(buildApp());
-      await tester.pumpAndSettle();
-
-      expect(find.text('Morning shadow warmup'), findsWidgets);
-      expect(
-        find.byKey(const ValueKey('speaking-quick-start')),
-        findsOneWidget,
-      );
-    });
-
-    testWidgets('filters prompt cards by selected practice mode', (
-      tester,
-    ) async {
-      await tester.pumpWidget(buildApp());
-      await tester.pumpAndSettle();
-
-      expect(find.text('Morning shadow warmup'), findsWidgets);
-      expect(find.text('Coffee order'), findsWidgets);
-      expect(find.text('TH check'), findsWidgets);
-
-      final dialogFilter = find.byKey(const ValueKey('speaking-filter-情景对话'));
-      await tester.ensureVisible(dialogFilter);
-      await tester.tap(dialogFilter);
-      await tester.pumpAndSettle();
-
-      expect(find.text('Coffee order'), findsWidgets);
-      expect(find.text('TH check'), findsNothing);
-      expect(find.text('Morning shadow warmup'), findsNothing);
-      expect(find.text('共 1 个训练'), findsOneWidget);
-    });
-
-    testWidgets(
-      'shows layered pronunciation drills instead of only a single reference sentence',
-      (tester) async {
-        await tester.pumpWidget(buildApp());
-        await tester.pumpAndSettle();
-
-        expect(find.text('先拆开练'), findsWidgets);
-        expect(find.text('五步发音路线'), findsWidgets);
-        expect(find.text('先听辨'), findsWidgets);
-        expect(find.text('再单练'), findsWidgets);
-        expect(find.text('短语连读'), findsWidgets);
-        expect(find.text('短语连读'), findsWidgets);
-        expect(find.text('自然变体开口'), findsWidgets);
-        expect(find.text('today'), findsWidgets);
-        expect(find.text('speak clearly'), findsWidgets);
-        expect(
-          find.text('Today I will speak slowly and clearly.'),
-          findsWidgets,
-        );
-      },
-    );
-
-    testWidgets('route items switch the active coach material', (tester) async {
-      await tester.pumpWidget(buildApp());
-      await tester.pumpAndSettle();
-
-      final reference = find.byKey(const ValueKey('speech-reference-shadow-1'));
-      expect(
-        tester.widget<Text>(reference).data,
-        'Today I will speak clearly and confidently.',
-      );
-
-      final wordRouteItem = find.byKey(
-        const ValueKey('speaking-route-item-shadow-1-word-1'),
-      );
-      await tester.ensureVisible(wordRouteItem);
-      await tester.tap(wordRouteItem);
-      await tester.pumpAndSettle();
-
-      expect(find.text('当前练习：再单练'), findsOneWidget);
-      expect(tester.widget<Text>(reference).data, 'clearly');
-      expect(find.text('已切到：clearly'), findsOneWidget);
-    });
-
-    testWidgets(
-      'focuses a prompt from the route and quick-start highlights it',
-      (tester) async {
-        await tester.pumpWidget(buildRoutedApp('/speaking?prompt=dialog-1'));
-        await tester.pumpAndSettle();
-
-        expect(find.text('Coffee order'), findsWidgets);
-        expect(
-          find.byKey(const ValueKey('speaking-prompt-focused-dialog-1')),
-          findsOneWidget,
-        );
-
-        final quickStart = find.byKey(const ValueKey('speaking-quick-start'));
-        await tester.ensureVisible(quickStart);
-        await tester.tap(quickStart);
-        await tester.pumpAndSettle();
-
-        expect(find.text('共 1 个训练'), findsOneWidget);
-        expect(
-          find.byKey(const ValueKey('speaking-prompt-focused-dialog-1')),
-          findsOneWidget,
-        );
-      },
-    );
+    expect(find.text('Coffee order'), findsWidgets);
+    expect(find.text('从这里开始'), findsOneWidget);
   });
 }

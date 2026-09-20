@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../daily/presentation/screens/learn_path_screen.dart';
+import '../../../daily/presentation/screens/me_screen.dart';
+import '../../../daily/presentation/screens/onboarding_flow_screen.dart';
+import '../../../daily/presentation/screens/progress_journey_screen.dart';
+import '../../../daily/presentation/screens/session_player_screen.dart';
+import '../../../daily/presentation/screens/speak_lab_screen.dart';
+import '../../../daily/presentation/screens/today_home_screen.dart';
 import '../../../screens/auth/auth_screen.dart';
 import '../../../services/storage_service.dart';
-import '../../presentation/screens/learn_screen.dart';
-import '../../presentation/screens/lesson_player_screen.dart';
-import '../../presentation/screens/onboarding_screen.dart';
 import '../../presentation/screens/ops_console_screen.dart';
-import '../../presentation/screens/profile_screen.dart';
-import '../../presentation/screens/progress_screen.dart';
-import '../../presentation/screens/speaking_hub_screen.dart';
-import '../../presentation/screens/today_screen.dart';
 import '../../presentation/widgets/v2_shell_scaffold.dart';
 
 class V2Router {
@@ -26,7 +26,7 @@ class V2Router {
       GoRoute(
         path: '/onboarding',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const OnboardingScreen(),
+        builder: (context, state) => const OnboardingFlowScreen(),
       ),
       GoRoute(
         path: '/auth',
@@ -41,17 +41,17 @@ class V2Router {
           GoRoute(
             path: '/today',
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: TodayScreen()),
+                const NoTransitionPage(child: TodayHomeScreen()),
           ),
           GoRoute(
             path: '/learn',
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: LearnScreen()),
+                const NoTransitionPage(child: LearnPathScreen()),
           ),
           GoRoute(
             path: '/speaking',
             pageBuilder: (context, state) => NoTransitionPage(
-              child: SpeakingHubScreen(
+              child: SpeakLabScreen(
                 focusPromptId: state.uri.queryParameters['prompt'],
               ),
             ),
@@ -59,20 +59,31 @@ class V2Router {
           GoRoute(
             path: '/progress',
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: ProgressScreen()),
+                const NoTransitionPage(child: ProgressJourneyScreen()),
           ),
           GoRoute(
             path: '/profile',
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: ProfileScreenV2()),
+                const NoTransitionPage(child: MeScreen()),
           ),
         ],
       ),
       GoRoute(
+        path: '/session',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => SessionPlayerScreen(
+          type: state.uri.queryParameters['type'] ?? 'lesson',
+          id: state.uri.queryParameters['id'] ?? '',
+          taskId: state.uri.queryParameters['task'],
+        ),
+      ),
+      GoRoute(
         path: '/lesson/:lessonId',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) =>
-            LessonPlayerScreen(lessonId: state.pathParameters['lessonId']!),
+        builder: (context, state) => SessionPlayerScreen(
+          type: 'lesson',
+          id: state.pathParameters['lessonId'] ?? '',
+        ),
       ),
       GoRoute(
         path: '/ops',

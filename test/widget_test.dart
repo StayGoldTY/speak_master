@@ -8,6 +8,8 @@ import 'package:speak_master/data/lessons_data.dart';
 import 'package:speak_master/data/phonemes_data.dart';
 import 'package:speak_master/data/units_data.dart';
 import 'package:speak_master/models/lesson.dart';
+import 'package:speak_master/daily/presentation/screens/onboarding_flow_screen.dart';
+import 'package:speak_master/daily/presentation/screens/today_home_screen.dart';
 import 'package:speak_master/screens/auth/auth_screen.dart';
 import 'package:speak_master/screens/assessment/assessment_screen.dart';
 import 'package:speak_master/screens/practice/practice_screen.dart';
@@ -250,6 +252,73 @@ void main() {
       find.byKey(const ValueKey('mc-explanation-u2_L1_s3')),
       findsOneWidget,
     );
+  });
+
+  testWidgets('新的日课首页会给出三个今日任务', (tester) async {
+    await _pumpRouter(
+      tester,
+      initialLocation: '/today',
+      size: const Size(390, 844),
+      routes: [
+        GoRoute(
+          path: '/today',
+          builder: (context, state) => const TodayHomeScreen(),
+        ),
+      ],
+    );
+
+    expect(find.byType(TodayHomeScreen), findsOneWidget);
+    expect(find.text('今天这 3 件事'), findsOneWidget);
+    expect(find.byKey(const ValueKey('today-primary-cta')), findsOneWidget);
+    expect(find.byKey(const ValueKey('today-task-plan_lesson')), findsOneWidget);
+  });
+
+  testWidgets('引导可以一屏一问地完成并进入今日', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+
+    final router = GoRouter(
+      initialLocation: '/onboarding',
+      routes: [
+        GoRoute(
+          path: '/onboarding',
+          builder: (context, state) => const OnboardingFlowScreen(),
+        ),
+        GoRoute(
+          path: '/today',
+          builder: (context, state) => const TodayHomeScreen(),
+        ),
+        GoRoute(
+          path: '/auth',
+          builder: (context, state) => const Scaffold(body: Text('auth')),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp.router(
+          theme: AppTheme.light,
+          routerConfig: router,
+          builder: (context, child) =>
+              Material(child: child ?? const SizedBox.shrink()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('每天开口 3 件事'), findsOneWidget);
+    for (var i = 0; i < 4; i++) {
+      await tester.tap(find.byKey(const ValueKey('onboarding-next')));
+      await tester.pumpAndSettle();
+    }
+    await tester.tap(find.byKey(const ValueKey('onboarding-finish')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TodayHomeScreen), findsOneWidget);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool('v2_onboarding_complete'), isTrue);
   });
 
   testWidgets('auth 页面在本地模式下会保留来源页返回能力', (tester) async {

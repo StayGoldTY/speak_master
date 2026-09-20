@@ -56,7 +56,10 @@ void main() {
         learnerName: 'Ada',
         learner: learner,
       );
-      expect(plan.items[1].route, '/speaking?prompt=assessment_thursday');
+      expect(
+        plan.items[1].route,
+        '/session?type=review&id=assessment_thursday%3Athree&task=plan_review',
+      );
     },
   );
 }

@@ -2,7 +2,9 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../daily/domain/session_models.dart';
 import '../models/user_progress.dart';
+import '../v2/domain/models/learner_models.dart';
 
 class StorageService {
   StorageService._internal();
@@ -31,6 +33,10 @@ class StorageService {
   static const _keyV2LearningGoal = 'v2_learning_goal';
   static const _keyV2PlacementLevel = 'v2_placement_level';
   static const _keyV2DailyMinutes = 'v2_daily_minutes';
+  static const _keyDailyLoopDate = 'daily_loop_date';
+  static const _keyDailyCompletedTasks = 'daily_completed_task_ids';
+  static const _keyPracticeLog = 'daily_practice_log';
+  static const _keyFrozenDailyPlan = 'daily_frozen_plan';
 
   SharedPreferences? _prefs;
 
@@ -188,6 +194,112 @@ class StorageService {
   Future<void> saveV2DailyMinutes(int value) async {
     await init();
     await _prefs!.setInt(_keyV2DailyMinutes, value);
+  }
+
+  String todayKey([DateTime? now]) {
+    final date = now ?? DateTime.now();
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '${date.year}-$month-$day';
+  }
+
+  String loadDailyLoopDate() {
+    final prefs = _prefs;
+    if (prefs == null) {
+      return '';
+    }
+    return prefs.getString(_keyDailyLoopDate) ?? '';
+  }
+
+  List<String> loadDailyCompletedTaskIds() {
+    final prefs = _prefs;
+    if (prefs == null) {
+      return const [];
+    }
+    return prefs.getStringList(_keyDailyCompletedTasks) ?? const [];
+  }
+
+  Future<void> saveDailyLoop({
+    required String dateKey,
+    required Iterable<String> completedTaskIds,
+  }) async {
+    await init();
+    await Future.wait([
+      _prefs!.setString(_keyDailyLoopDate, dateKey),
+      _prefs!.setStringList(_keyDailyCompletedTasks, completedTaskIds.toList()),
+    ]);
+  }
+
+  List<PracticeLogEntry> loadPracticeLog() {
+    final prefs = _prefs;
+    if (prefs == null) {
+      return const [];
+    }
+    final raw = prefs.getStringList(_keyPracticeLog) ?? const [];
+    return raw
+        .map((item) {
+          try {
+            final decoded = jsonDecode(item);
+            if (decoded is Map) {
+              return PracticeLogEntry.fromJson(
+                decoded.map((key, value) => MapEntry(key.toString(), value)),
+              );
+            }
+          } catch (_) {
+            return null;
+          }
+          return null;
+        })
+        .whereType<PracticeLogEntry>()
+        .toList();
+  }
+
+  DailyPlan? loadFrozenDailyPlan(String dateKey) {
+    final prefs = _prefs;
+    if (prefs == null) {
+      return null;
+    }
+    final raw = prefs.getString(_keyFrozenDailyPlan);
+    if (raw == null || raw.trim().isEmpty) {
+      return null;
+    }
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) {
+        return null;
+      }
+      if (decoded['dateKey']?.toString() != dateKey) {
+        return null;
+      }
+      final plan = decoded['plan'];
+      if (plan is! Map) {
+        return null;
+      }
+      return DailyPlan.fromJson(
+        plan.map((key, value) => MapEntry(key.toString(), value)),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> saveFrozenDailyPlan({
+    required String dateKey,
+    required DailyPlan plan,
+  }) async {
+    await init();
+    await _prefs!.setString(
+      _keyFrozenDailyPlan,
+      jsonEncode({'dateKey': dateKey, 'plan': plan.toJson()}),
+    );
+  }
+
+  Future<void> savePracticeLog(List<PracticeLogEntry> entries) async {
+    await init();
+    await _prefs!.setStringList(
+      _keyPracticeLog,
+      entries.map((entry) => jsonEncode(entry.toJson())).toList(),
+    );
   }
 
   Map<String, double> _loadPhonemeScores(SharedPreferences prefs) {

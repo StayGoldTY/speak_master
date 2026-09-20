@@ -89,6 +89,8 @@ class DailyPlanItem {
   final DailyPlanItemKind kind;
   final int estimatedMinutes;
   final int xpReward;
+  final String sessionType;
+  final String targetId;
 
   const DailyPlanItem({
     required this.id,
@@ -98,7 +100,40 @@ class DailyPlanItem {
     required this.kind,
     required this.estimatedMinutes,
     required this.xpReward,
+    this.sessionType = 'lesson',
+    this.targetId = '',
   });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'subtitle': subtitle,
+      'route': route,
+      'kind': kind.name,
+      'estimatedMinutes': estimatedMinutes,
+      'xpReward': xpReward,
+      'sessionType': sessionType,
+      'targetId': targetId,
+    };
+  }
+
+  factory DailyPlanItem.fromJson(Map<String, dynamic> json) {
+    return DailyPlanItem(
+      id: json['id']?.toString() ?? '',
+      title: json['title']?.toString() ?? '',
+      subtitle: json['subtitle']?.toString() ?? '',
+      route: json['route']?.toString() ?? '',
+      kind: DailyPlanItemKind.values.firstWhere(
+        (item) => item.name == json['kind']?.toString(),
+        orElse: () => DailyPlanItemKind.lesson,
+      ),
+      estimatedMinutes: (json['estimatedMinutes'] as num?)?.toInt() ?? 5,
+      xpReward: (json['xpReward'] as num?)?.toInt() ?? 10,
+      sessionType: json['sessionType']?.toString() ?? 'lesson',
+      targetId: json['targetId']?.toString() ?? '',
+    );
+  }
 }
 
 class DailyPlan {
@@ -111,6 +146,33 @@ class DailyPlan {
     required this.subtitle,
     required this.items,
   });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'headline': headline,
+      'subtitle': subtitle,
+      'items': items.map((item) => item.toJson()).toList(),
+    };
+  }
+
+  factory DailyPlan.fromJson(Map<String, dynamic> json) {
+    final rawItems = json['items'] as List<dynamic>? ?? const [];
+    return DailyPlan(
+      headline: json['headline']?.toString() ?? '',
+      subtitle: json['subtitle']?.toString() ?? '',
+      items: rawItems
+          .map((item) {
+            if (item is! Map) {
+              return null;
+            }
+            return DailyPlanItem.fromJson(
+              item.map((key, value) => MapEntry(key.toString(), value)),
+            );
+          })
+          .whereType<DailyPlanItem>()
+          .toList(),
+    );
+  }
 }
 
 class ReviewItem {
@@ -164,12 +226,14 @@ class V2LearnerSetupState {
   final PlacementLevel placementLevel;
   final int dailyMinutes;
   final bool onboardingComplete;
+  final String accentPreference;
 
   const V2LearnerSetupState({
     required this.goal,
     required this.placementLevel,
     required this.dailyMinutes,
     required this.onboardingComplete,
+    this.accentPreference = 'american',
   });
 
   V2LearnerSetupState copyWith({
@@ -177,12 +241,14 @@ class V2LearnerSetupState {
     PlacementLevel? placementLevel,
     int? dailyMinutes,
     bool? onboardingComplete,
+    String? accentPreference,
   }) {
     return V2LearnerSetupState(
       goal: goal ?? this.goal,
       placementLevel: placementLevel ?? this.placementLevel,
       dailyMinutes: dailyMinutes ?? this.dailyMinutes,
       onboardingComplete: onboardingComplete ?? this.onboardingComplete,
+      accentPreference: accentPreference ?? this.accentPreference,
     );
   }
 }

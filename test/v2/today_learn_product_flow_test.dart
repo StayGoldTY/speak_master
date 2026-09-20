@@ -4,15 +4,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speak_master/core/theme/app_theme.dart';
+import 'package:speak_master/daily/presentation/screens/learn_path_screen.dart';
+import 'package:speak_master/daily/presentation/screens/today_home_screen.dart';
+import 'package:speak_master/providers/progress_provider.dart';
+import 'package:speak_master/v2/application/providers/v2_providers.dart';
 import 'package:speak_master/v2/application/services/legacy_seed_learning_repository.dart';
-import 'package:speak_master/v2/presentation/screens/learn_screen.dart';
-import 'package:speak_master/v2/presentation/screens/today_screen.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('V2 product flow surfaces next actions', () {
-    testWidgets('today screen highlights the next lesson and routes into it', (
+  group('Daily product flow', () {
+    testWidgets('today shows three tasks and starts the next session', (
       tester,
     ) async {
       final repository = LegacySeedLearningRepository();
@@ -33,22 +35,15 @@ void main() {
         routes: [
           GoRoute(
             path: '/today',
-            builder: (context, state) => const TodayScreen(),
+            builder: (context, state) => const TodayHomeScreen(),
           ),
           GoRoute(
-            path: '/lesson/:lessonId',
+            path: '/session',
             builder: (context, state) => Scaffold(
-              body: Text('lesson:${state.pathParameters['lessonId']}'),
+              body: Text(
+                'session:${state.uri.queryParameters['type']}:${state.uri.queryParameters['id']}',
+              ),
             ),
-          ),
-          GoRoute(
-            path: '/speaking',
-            builder: (context, state) => const Scaffold(body: Text('speaking')),
-          ),
-          GoRoute(
-            path: '/onboarding',
-            builder: (context, state) =>
-                const Scaffold(body: Text('onboarding')),
           ),
         ],
       );
@@ -63,74 +58,165 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('继续主线课程'), findsOneWidget);
-      expect(find.text(nextLesson.title), findsOneWidget);
-      expect(
-        find.text('已完成 1 / ${firstUnit.lessons.length} 节'),
-        findsOneWidget,
-      );
+      expect(find.text('今天这 3 件事'), findsOneWidget);
+      expect(find.text(nextLesson.title), findsWidgets);
+      expect(find.byKey(const ValueKey('today-task-plan_lesson')), findsOneWidget);
+      expect(find.byKey(const ValueKey('today-task-plan_review')), findsOneWidget);
+      expect(find.byKey(const ValueKey('today-task-plan_transfer')), findsOneWidget);
 
       final primaryCta = find.byKey(const ValueKey('today-primary-cta'));
       await tester.ensureVisible(primaryCta);
       await tester.tap(primaryCta);
       await tester.pumpAndSettle();
 
-      expect(find.text('lesson:${nextLesson.id}'), findsOneWidget);
+      expect(find.text('session:lesson:${nextLesson.id}'), findsOneWidget);
     });
 
-    testWidgets(
-      'learn screen locks future units until the current one is done',
-      (tester) async {
-        final repository = LegacySeedLearningRepository();
-        final track = repository.getPrimaryTrack();
-        final firstUnit = track.units.first;
-        final secondUnit = track.units[1];
-        final thirdUnit = track.units[2];
+    testWidgets('learn path locks later units until the current one is done', (
+      tester,
+    ) async {
+      final repository = LegacySeedLearningRepository();
+      final track = repository.getPrimaryTrack();
+      final firstUnit = track.units.first;
+      final secondUnit = track.units[1];
+      final thirdUnit = track.units[2];
 
-        SharedPreferences.setMockInitialValues({
-          'completed_lessons': firstUnit.lessons
-              .map((lesson) => lesson.id)
-              .toList(),
-          'completed_units': [firstUnit.id],
-        });
+      SharedPreferences.setMockInitialValues({
+        'completed_lessons': firstUnit.lessons
+            .map((lesson) => lesson.id)
+            .toList(),
+        'completed_units': [firstUnit.id],
+      });
 
-        final router = GoRouter(
-          initialLocation: '/learn',
-          routes: [
-            GoRoute(
-              path: '/learn',
-              builder: (context, state) => const LearnScreen(),
-            ),
-            GoRoute(
-              path: '/lesson/:lessonId',
-              builder: (context, state) => Scaffold(
-                body: Text('lesson:${state.pathParameters['lessonId']}'),
-              ),
-            ),
-          ],
-        );
-
-        await tester.pumpWidget(
-          ProviderScope(
-            child: MaterialApp.router(
-              theme: AppTheme.light,
-              routerConfig: router,
+      final router = GoRouter(
+        initialLocation: '/learn',
+        routes: [
+          GoRoute(
+            path: '/learn',
+            builder: (context, state) => const LearnPathScreen(),
+          ),
+          GoRoute(
+            path: '/session',
+            builder: (context, state) => Scaffold(
+              body: Text('session:${state.uri.queryParameters['id']}'),
             ),
           ),
-        );
-        await tester.pumpAndSettle();
+          GoRoute(
+            path: '/speaking',
+            builder: (context, state) => const Scaffold(body: Text('speaking')),
+          ),
+        ],
+      );
 
-        expect(find.text('当前推荐'), findsOneWidget);
-        expect(find.text(secondUnit.title), findsWidgets);
-        expect(find.text('可开始'), findsWidgets);
-        expect(find.text('待解锁'), findsWidgets);
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp.router(
+            theme: AppTheme.light,
+            routerConfig: router,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-        final lockedButton = find.byKey(ValueKey('unit-cta-${thirdUnit.id}'));
-        final enabledButton = find.byKey(ValueKey('unit-cta-${secondUnit.id}'));
+      expect(find.text('现在学这个'), findsOneWidget);
+      expect(find.text(secondUnit.title), findsWidgets);
+      expect(find.text('可开始'), findsWidgets);
+      expect(find.text('待解锁'), findsWidgets);
 
-        expect(tester.widget<FilledButton>(lockedButton).onPressed, isNull);
-        expect(tester.widget<FilledButton>(enabledButton).onPressed, isNotNull);
-      },
-    );
+      final lockedButton = find.byKey(ValueKey('unit-cta-${thirdUnit.id}'));
+      final enabledButton = find.byKey(ValueKey('unit-cta-${secondUnit.id}'));
+
+      expect(tester.widget<FilledButton>(lockedButton).onPressed, isNull);
+      expect(tester.widget<FilledButton>(enabledButton).onPressed, isNotNull);
+    });
+
+    testWidgets('today celebrates when all three tasks are already done', (
+      tester,
+    ) async {
+      final now = DateTime.now();
+      final month = now.month.toString().padLeft(2, '0');
+      final day = now.day.toString().padLeft(2, '0');
+      SharedPreferences.setMockInitialValues({
+        'v2_onboarding_complete': true,
+        'daily_loop_date': '${now.year}-$month-$day',
+        'daily_completed_task_ids': [
+          'plan_lesson',
+          'plan_review',
+          'plan_transfer',
+        ],
+        'streak_days': 3,
+      });
+
+      final router = GoRouter(
+        initialLocation: '/today',
+        routes: [
+          GoRoute(
+            path: '/today',
+            builder: (context, state) => const TodayHomeScreen(),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp.router(
+            theme: AppTheme.light,
+            routerConfig: router,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('today-goal-complete')), findsOneWidget);
+      expect(find.text('今日目标完成'), findsOneWidget);
+    });
+
+    testWidgets('today lesson card stays frozen after that lesson is completed', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({
+        'v2_onboarding_complete': true,
+        'v2_learning_goal': 'pronunciationConfidence',
+        'v2_placement_level': 'starter',
+        'v2_daily_minutes': 15,
+      });
+
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final router = GoRouter(
+        initialLocation: '/today',
+        routes: [
+          GoRoute(
+            path: '/today',
+            builder: (context, state) => const TodayHomeScreen(),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(
+            theme: AppTheme.light,
+            routerConfig: router,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final frozen = container.read(v2DailyPlanProvider);
+      final lessonTitle = frozen.items.first.title;
+      final lessonId = frozen.items.first.targetId;
+      expect(find.text(lessonTitle), findsWidgets);
+
+      await container.read(progressProvider.notifier).completeLesson(lessonId);
+      await tester.pumpAndSettle();
+
+      expect(find.text(lessonTitle), findsWidgets);
+      expect(
+        container.read(v2DailyPlanProvider).items.first.targetId,
+        lessonId,
+      );
+    });
   });
 }
